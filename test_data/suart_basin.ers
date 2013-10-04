@@ -1,0 +1,29 @@
+DatasetHeader Begin
+	Version	= "6.0"
+	Name	= "suart_basin.ers"
+	DataSetType	= ERStorage
+	DataType	= Raster
+	ByteOrder	= LSBFirst
+	CoordinateSpace Begin
+		Datum	= "RAW"
+		Projection	= "RAW"
+		CoordinateType	= EN
+		Units	= "METERS"
+		Rotation	= 0:0:0.0
+	CoordinateSpace End
+	RasterInfo Begin
+		CellType	= IEEE4ByteReal
+		NrOfLines	= 1440
+		NrOfCellsPerLine	= 960
+		NrOfBands	= 1
+		CellInfo Begin
+			Xdimension	= 0.00833299999999999
+			Ydimension	= 0.00833299999999999
+		CellInfo End
+		RegistrationCoord Begin
+			Eastings	= 145.9956585
+			Northings	= -21.9919395
+		RegistrationCoord End
+		NullCellValue	= -99999
+	RasterInfo End
+DatasetHeader End
