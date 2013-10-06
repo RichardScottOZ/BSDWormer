@@ -1,0 +1,10 @@
+*.o
+*.bin
+*.pyc
+
+.deps
+.project
+
+*~
+
+.DS_Store
