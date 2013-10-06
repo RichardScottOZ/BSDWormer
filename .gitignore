@@ -5,6 +5,7 @@
 .deps
 .project
 .pydevproject
+.metadata
 
 *~
 
