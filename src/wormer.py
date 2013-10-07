@@ -7,6 +7,7 @@ from osgeo import gdal
 #from osgeo import gdal_array
 from osgeo import gdalconst
 from matplotlib import pyplot as plt
+import os.path
 #from matplotlib import image as mpimg
 
 class Wormer(object):
@@ -20,7 +21,7 @@ class Wormer(object):
     >>> grid = np.zeros((512,512),np.float)
     >>> foo.setBaseGrid(grid)
     >>> assert np.allclose(foo.base_grid,grid)
-    >>> filename = '/Users/frank/Documents/Src/Git Stuff/BSDWormer/test_data/SuartBasin/suart_basin.ers'
+    >>> filename = os.path.abspath('../test_data/SuartBasin/suart_basin.ers')
     >>> foo.importGdalRaster(filename)
     >>> assert foo.gdal_input_filename == filename
     >>> assert foo.base_grid.shape == (1440,960)
