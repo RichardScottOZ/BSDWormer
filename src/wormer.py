@@ -6,13 +6,25 @@ from osgeo import gdal
 #from osgeo import osr
 #from osgeo import gdal_array
 from osgeo import gdalconst
+from matplotlib import pyplot as plt
+#from matplotlib import image as mpimg
 
 class Wormer(object):
-    """Class to be overview of whole worming method
+    """Overview of whole worming method.
+    
+    Usage example (and Doctest)
     
     >>> foo = Wormer()
     >>> assert isinstance(foo,Wormer)
     >>> assert (foo.base_grid == None)
+    >>> grid = np.zeros((512,512),np.float)
+    >>> foo.setBaseGrid(grid)
+    >>> assert np.allclose(foo.base_grid,grid)
+    >>> filename = '/Users/frank/Documents/Src/Git Stuff/BSDWormer/test_data/SuartBasin/suart_basin.ers'
+    >>> foo.importGdalRaster(filename)
+    >>> assert foo.gdal_input_filename == filename
+    >>> assert foo.base_grid.shape == (1440,960)
+    >>> foo.viewRaster(foo.base_grid)
     
     """
     
@@ -21,23 +33,17 @@ class Wormer(object):
         
     def setBaseGrid(self,grid):
         """Setter for base_grid
-        >>> foo = Wormer()
-        >>> grid = np.zeros((512,512),np.float)
-        >>> foo.setBaseGrid(grid)
-        >>> assert np.allclose(foo.base_grid,grid)
         """
         self.base_grid= grid
         
     def importGdalRaster(self,gdal_filename):
         """Import a GDAL raster into a numpy array stashed away as an attribute.
-        >>> foo = Wormer()
-        >>> filename = '/Users/frank/Documents/Src/Git Stuff/BSDWormer/test_data/SuartBasin/suart_basin.ers'
-        >>> foo.importGdalRaster(filename)
-        >>> assert foo.gdal_input_filename == filename
-        >>> assert foo.base_grid.shape == (1440,960)
         """
         self.gdal_input_filename = gdal_filename
         self.setBaseGrid(np.array(gdalnumeric.LoadFile(self.gdal_input_filename)))
+        
+    def viewRaster(self,numpy_grid):
+        plt.imshow(numpy_grid)
 
     
 
