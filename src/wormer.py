@@ -29,7 +29,7 @@ class Wormer(object):
         self.base_grid= grid
         
     def importGdalRaster(self,gdal_filename):
-        """Import a GDAL raster into a numpy array
+        """Import a GDAL raster into a numpy array stashed away as an attribute.
         >>> foo = Wormer()
         >>> filename = '/Users/frank/Documents/Src/Git Stuff/BSDWormer/test_data/SuartBasin/suart_basin.ers'
         >>> foo.importGdalRaster(filename)
