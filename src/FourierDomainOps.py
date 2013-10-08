@@ -8,6 +8,8 @@ from osgeo import gdal
 from osgeo import gdalconst
 from matplotlib import pyplot as plt
 import os.path
+import sys
+import os
 #from matplotlib import image as mpimg
 
 class UpwardCont(object):
@@ -17,15 +19,39 @@ class UpwardCont(object):
     
     >>> foo = UpwardCont()
     >>> assert isinstance(foo,UpwardCont)
-    >>> assert (foo.kx_ky_grid == None)
+    >>> assert (foo.spatial_grid == None)
+    >>> grid = np.zeros((512,512),dtype=complex)
+    >>> foo.setSpatialGrid(grid)
+    >>> assert np.allclose(foo.spatial_grid,grid)
+    >>> assert foo.spatial_grid.dtype == np.dtype(complex) 
+    >>> foo.setkxkyGrid(grid)
+    >>> assert np.allclose(foo.kxky_grid,grid)
+    >>> assert foo.kxky_grid.dtype == np.dtype(complex)
+    >>> foo.spatial_grid[0,0] = 1
+    >>> print(foo.kxky_grid[255,255])  
 
     """
 
     def __init__(self):
-        self.kx_ky_grid = None
+        self.spatial_grid = None
+        
+    def setSpatialGrid(self,grid):
+        """Setter for spatial_grid
+        """
+        self.spatial_grid = grid
+    
+    def setkxkyGrid(self,grid):
+        """Setter for kxky_grid (wavenumber domain)
+        """
+        self.kxky_grid = grid
+    
+    def simpleFFT(self,spatial_grid):
+        """ Perform a simple FFT without pre-conditioning
+            Input: complex; Output: complex
+        """        
+        self.kxky_grid = np.fft.fft2(spatial_grid)
 
-
-
+    
 if __name__ == '__main__':
     import doctest
     doctest.testmod()    
