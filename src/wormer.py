@@ -35,7 +35,7 @@ class Wormer(object):
     def setBaseGrid(self,grid):
         """Setter for base_grid
         """
-        self.base_grid= grid
+        self.base_grid = grid
         
     def importGdalRaster(self,gdal_filename):
         """Import a GDAL raster into a numpy array stashed away as an attribute.
@@ -45,6 +45,7 @@ class Wormer(object):
         
     def viewRaster(self,numpy_grid):
         plt.imshow(numpy_grid)
+        plt.show()
 
     
 
