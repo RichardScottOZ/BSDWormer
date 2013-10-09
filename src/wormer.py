@@ -21,10 +21,10 @@ class Wormer(object):
     >>> grid = np.zeros((512,512),np.float)
     >>> foo.setBaseGrid(grid)
     >>> assert np.allclose(foo.base_grid,grid)
-    >>> filename = os.path.abspath('../test_data/SuartBasin/suart_basin.ers')
+    >>> filename = os.path.abspath('../test_data/SuartBasin/PaddedSuartBasin.ers')
     >>> foo.importGdalRaster(filename)
     >>> assert foo.gdal_input_filename == filename
-    >>> assert foo.base_grid.shape == (1440,960)
+    >>> assert foo.base_grid.shape == (2048,1536)
     >>> foo.viewRaster(foo.base_grid)
     
     """
