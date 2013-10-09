@@ -1,0 +1,21 @@
+DatasetHeader Begin
+	Version	= "6.0"
+	Name	= "PaddedSuarBasin.ers"
+	DataSetType	= ERStorage
+	DataType	= Raster
+	ByteOrder	= LSBFirst
+	RasterInfo Begin
+		CellType	= IEEE4ByteReal
+		NrOfLines	= 2048
+		NrOfCellsPerLine	= 1536
+		NrOfBands	= 1
+		CellInfo Begin
+			Xdimension	= 0.00833299999999999
+			Ydimension	= 0.00833299999999999
+		CellInfo End
+		RegistrationCoord Begin
+			Eastings	= 143.5957545
+			Northings	= -19.4587075
+		RegistrationCoord End
+	RasterInfo End
+DatasetHeader End
