@@ -3,13 +3,13 @@ import numpy as np
 class FourierDomainOps(object):
     """Deal with Fourier Domain entities and Operators.
     
-    Usage example (and Doctest)
+    Usage examples (and Doctests)
     
     >>> import FourierDomainGrid as GRID
-    >>> bar = GRID.FourierDomainGrid()
+    >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
     >>> bar.setSpatialGrid(np.ones((512,256),dtype=np.complex))
     >>> bar.setHatGrid(bar.simpleFFT(bar.spatial_grid))
-    >>> bar.buildWavenumbers(bar.spatial_grid,dx=1.0,dy=1.0)
+    >>> bar.buildWavenumbers(bar.spatial_grid)
     >>> foo = FourierDomainOps(bar)
     >>> assert isinstance(foo,FourierDomainOps)
     >>> foo.buildModK()
@@ -19,6 +19,27 @@ class FourierDomainOps(object):
     >>> assert np.allclose(foo.modk[-1,0],np.abs(foo.fdg.ky[-1]))
     >>> assert np.allclose(foo.modk[-1,-1],np.sqrt(foo.fdg.ky[-1]**2 + foo.fdg.kx[-1]**2))
     >>> assert np.allclose(foo.modk[5,-6],np.sqrt(foo.fdg.ky[5]**2 + foo.fdg.kx[-6]**2))
+    
+    # Test the gradient for a delta function somewhere on the grid.
+    >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
+    >>> bar.spatial_grid[255,127] = 1.0
+    >>> bar.setHatGrid(bar.simpleFFT(bar.spatial_grid))
+    >>> bar.buildWavenumbers(bar.spatial_grid)
+    >>> foo = FourierDomainOps(bar)
+    >>> foo.buildDxOp()
+    >>> dxBar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> dxBar.setHatGrid(bar.hat_grid*foo.F_dxOp)
+    >>> dxBar.setSpatialGrid(dxBar.simpleIFFT(dxBar.hat_grid))
+    >>> assert np.allclose(dxBar.spatial_grid[255,125],0.0)
+    >>> assert np.allclose(dxBar.spatial_grid[255,126],1.0)
+    >>> assert np.allclose(dxBar.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(dxBar.spatial_grid[255,128],-1.0)
+    >>> assert np.allclose(dxBar.spatial_grid[255,129],0.0)
+    >>> assert np.allclose(dxBar.spatial_grid[254,:],0.0)
+    >>> assert np.allclose(dxBar.spatial_grid[256,:],0.0)
+
+    >>> 
 
     """
     
@@ -37,10 +58,48 @@ class FourierDomainOps(object):
         self.modk = np.sqrt(np.add.outer(ky*ky,kx*kx))
 
     
-    def UpwardContinuationOp(self,delta_z):
+    def buildUpwardContinuationOp(self,delta_z):
         """Fourier Transform of the Upward Continuation Operator
+        
+        FIXME: Find an analytic expression for some upward continuation, 
+        and write a test that checks it.
         """
         self.F_up = np.exp(-delta_z*self.modk)
+        
+    def buildDxOp(self):
+        """The analytic expression for a derivative is available in closed form in the 
+        Fourier Domain. Unfortunately, it exponentially amplifies the shortest 
+        wavelengths in the signal, leading to extreme amplification of the 
+        content that usually isn't known very well at all. The resulting 
+        derivatives are 'noisy' in the extreme.
+        As is well known, another approach is to estimate gradients as central differences on the
+        discrete grid (or, perhaps using higher order finite difference stencils 
+        for increased accuracy).
+        In this routine, we are implementing a central difference in x 
+        explicitly using the Fourier shift theorem. Denoting the transform pair
+        f <=> F, the shift theorem states:
+          F{f(x-x_0)}(kx) = exp(-2 pi j kx x_0) F(kx)
+        
+        We write the central difference on a grid spacing of \Delta x as:
+        df/dx \approx [ f( x + \Delta x) - f( x - \Delta x) ]/(2 \Delta x)
+        
+        Employing the shift theorem, in the Fourier domain this becomes:
+        F[df/dx](kx) \approx 
+          F(kx) [ exp(2 pi j kx \Delta x) - exp(-2 pi j kx \Delta x) ] / (2 \Delta x)
+        Factoring out the F(kx), the operator becomes the rest of the expression.
+
+        Now, that expression has the functional form of a sine. Writing 
+        y = 2 pi kx \Delta x, From Euler's formula we find:
+        
+        sin(y) = (exp(j y) - exp(-j y))/2j
+        so the derivative operator reduces to:
+        2j/(\Delta x) sin(2 pi kx \Delta x)
+        This expression has the major benefit of not amplifying the short 
+        wavelengths.
+        """
+        kx = self.fdg.kx
+        dx = self.fdg.dx
+        self.F_dxOp = ((2.*(0.+1.j))/dx)*np.sin(2*np.pi*kx*dx)
     
      
 if __name__ == '__main__':
