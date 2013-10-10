@@ -48,10 +48,12 @@ class FourierDomainGrid(object):
     >>> assert len(foo.ky) == 512
     """
 
-    def __init__(self):
+    def __init__(self,dx=1.0,dy=1.0):
         self.spatial_grid = None
+        self.dx = dx
+        self.dy = dy
         
-    def buildWavenumbers(self,grid,dx=1.0,dy=1.0):
+    def buildWavenumbers(self,grid):
         ''' Get kx and ky based on size of 2d input grid
         '''
         self.grid_shape = np.shape(grid) 
@@ -59,8 +61,8 @@ class FourierDomainGrid(object):
         self.grid_x_len = self.grid_shape[1]
         self.grid_y_len = self.grid_shape[0]
         ''' fftfreq returns the DFT sample frequencies'''
-        self.kx = np.fft.fftfreq(self.grid_x_len, d=dx)
-        self.ky = np.fft.fftfreq(self.grid_y_len, d=dy)
+        self.kx = np.fft.fftfreq(self.grid_x_len, d=self.dx)
+        self.ky = np.fft.fftfreq(self.grid_y_len, d=self.dy)
 
     def setSpatialGrid(self,grid):
         """Setter for spatial_grid
