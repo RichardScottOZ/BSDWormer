@@ -38,7 +38,6 @@ class FourierDomainOps(object):
     >>> assert np.allclose(dxBar.spatial_grid[255,129],0.0)
     >>> assert np.allclose(dxBar.spatial_grid[254,:],0.0)
     >>> assert np.allclose(dxBar.spatial_grid[256,:],0.0)
-
     >>> 
 
     """
@@ -72,7 +71,8 @@ class FourierDomainOps(object):
         wavelengths in the signal, leading to extreme amplification of the 
         content that usually isn't known very well at all. The resulting 
         derivatives are 'noisy' in the extreme.
-        As is well known, another approach is to estimate gradients as central differences on the
+        As is well known, another approach is to estimate gradients as central 
+        differences in the Fourier domain on the
         discrete grid (or, perhaps using higher order finite difference stencils 
         for increased accuracy).
         In this routine, we are implementing a central difference in x 
