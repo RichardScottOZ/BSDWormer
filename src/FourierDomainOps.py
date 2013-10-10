@@ -20,7 +20,7 @@ class FourierDomainOps(object):
     >>> assert np.allclose(foo.modk[-1,-1],np.sqrt(foo.fdg.ky[-1]**2 + foo.fdg.kx[-1]**2))
     >>> assert np.allclose(foo.modk[5,-6],np.sqrt(foo.fdg.ky[5]**2 + foo.fdg.kx[-6]**2))
     
-    # Test the gradient for a delta function somewhere on the grid.
+    # Test the x gradient for a delta function somewhere on the grid.
     >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
     >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
     >>> bar.spatial_grid[255,127] = 1.0
@@ -38,6 +38,28 @@ class FourierDomainOps(object):
     >>> assert np.allclose(dxBar.spatial_grid[255,129],0.0)
     >>> assert np.allclose(dxBar.spatial_grid[254,:],0.0)
     >>> assert np.allclose(dxBar.spatial_grid[256,:],0.0)
+
+    # Test the y gradient for a delta function somewhere on the grid.
+    >>> del bar
+    >>> del foo
+    >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
+    >>> bar.spatial_grid[255,127] = 1.0
+    >>> bar.setHatGrid(bar.simpleFFT(bar.spatial_grid))
+    >>> bar.buildWavenumbers(bar.spatial_grid)
+    >>> foo = FourierDomainOps(bar)
+    >>> foo.buildDyOp()
+    >>> dyBar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> dyBar.setHatGrid(bar.hat_grid*foo.F_dyOp)
+    >>> dyBar.setSpatialGrid(dyBar.simpleIFFT(dyBar.hat_grid))
+    >>> assert np.allclose(dyBar.spatial_grid[253,127],0.0)
+    >>> assert np.allclose(dyBar.spatial_grid[254,127],1.0)
+    >>> assert np.allclose(dyBar.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(dyBar.spatial_grid[256,127],-1.0)
+    >>> assert np.allclose(dyBar.spatial_grid[257,127],0.0)
+    >>> assert np.allclose(dyBar.spatial_grid[:,126],0.0)
+    >>> assert np.allclose(dyBar.spatial_grid[:,128],0.0)
+
     >>> 
 
     """
@@ -99,7 +121,16 @@ class FourierDomainOps(object):
         """
         kx = self.fdg.kx
         dx = self.fdg.dx
-        self.F_dxOp = ((2.*(0.+1.j))/dx)*np.sin(2*np.pi*kx*dx)
+        self.F_dxOp = ((2.*(0.+1.j))/dx)*np.sin(2.*np.pi*kx[np.newaxis,:]*dx)
+    
+    def buildDyOp(self):
+        """
+        See the comment for the DxOp immediately above. Everything is the same 
+        except that we substitute y for x
+        """
+        ky = self.fdg.ky
+        dy = self.fdg.dy
+        self.F_dyOp = ((2.*(0.+1.j))/dy)*np.sin(2.*np.pi*ky[:,np.newaxis]*dy)
     
      
 if __name__ == '__main__':
