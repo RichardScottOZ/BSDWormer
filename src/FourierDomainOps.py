@@ -40,8 +40,6 @@ class FourierDomainOps(object):
     >>> assert np.allclose(dxBar.spatial_grid[256,:],0.0)
 
     # Test the y gradient for a delta function somewhere on the grid.
-    >>> del bar
-    >>> del foo
     >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
     >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
     >>> bar.spatial_grid[255,127] = 1.0
@@ -59,8 +57,36 @@ class FourierDomainOps(object):
     >>> assert np.allclose(dyBar.spatial_grid[257,127],0.0)
     >>> assert np.allclose(dyBar.spatial_grid[:,126],0.0)
     >>> assert np.allclose(dyBar.spatial_grid[:,128],0.0)
-
-    >>> 
+    
+    # Test for upward continuation
+    >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
+    >>> bar.spatial_grid[255,127] = 1.0
+    >>> bar.setHatGrid(bar.simpleFFT(bar.spatial_grid))
+    >>> bar.buildWavenumbers(bar.spatial_grid)
+    >>> foo = FourierDomainOps(bar)
+    >>> foo.buildModK()
+    >>> foo.buildUpwardContinuationOp(20.0)
+    >>> upcontBar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> upcontBar.setHatGrid(bar.hat_grid * foo.F_up)
+    >>> upcontBar.setSpatialGrid(upcontBar.simpleIFFT(upcontBar.hat_grid))
+    >>> assert np.allclose(np.sum(upcontBar.spatial_grid),1.0)
+    >>> foo.buildUpwardContinuationOp(10.0)
+    >>> upcontBar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> upcontBar.setHatGrid(bar.hat_grid * foo.F_up)
+    >>> upcontBar.setSpatialGrid(upcontBar.simpleIFFT(upcontBar.hat_grid))
+    >>> assert np.allclose(np.sum(upcontBar.spatial_grid),1.0)
+    >>> foo.buildUpwardContinuationOp(5.0)
+    >>> upcontBar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> upcontBar.setHatGrid(bar.hat_grid * foo.F_up)
+    >>> upcontBar.setSpatialGrid(upcontBar.simpleIFFT(upcontBar.hat_grid))
+    >>> assert np.allclose(np.sum(upcontBar.spatial_grid),1.0)
+    >>> foo.buildUpwardContinuationOp(1.0)
+    >>> upcontBar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> upcontBar.setHatGrid(bar.hat_grid * foo.F_up)
+    >>> upcontBar.setSpatialGrid(upcontBar.simpleIFFT(upcontBar.hat_grid))
+    >>> assert np.allclose(np.sum(upcontBar.spatial_grid),1.0)
+    
 
     """
     
@@ -84,6 +110,10 @@ class FourierDomainOps(object):
         
         FIXME: Find an analytic expression for some upward continuation, 
         and write a test that checks it.
+        
+        The tests in the doctest above only exercise this loosely.
+        We are passing a bunch of necessary tests. But these tests are not 
+        sufficient tests.
         """
         self.F_up = np.exp(-delta_z*self.modk)
         
