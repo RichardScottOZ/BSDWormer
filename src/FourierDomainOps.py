@@ -12,6 +12,9 @@ class FourierDomainOps(object):
     >>> bar.buildWavenumbers(bar.spatial_grid)
     >>> foo = FourierDomainOps(bar)
     >>> assert isinstance(foo,FourierDomainOps)
+    >>> assert np.allclose(bar.spatial_grid,foo.fdg.spatial_grid)
+    >>> assert foo.F_dxOp is None
+    >>> assert foo.F_dyOp is None
     >>> foo.buildModK()
     >>> assert foo.modk.shape == foo.fdg.grid_shape
     >>> assert foo.modk[0,0] == 0.0
@@ -92,6 +95,8 @@ class FourierDomainOps(object):
     
     def __init__(self, fourier_domain_grid):
         self.fdg = fourier_domain_grid
+        self.F_dxOp = None
+        self.F_dyOp = None
     
     def buildModK(self):
         kx = self.fdg.kx
@@ -115,7 +120,7 @@ class FourierDomainOps(object):
         We are passing a bunch of necessary tests. But these tests are not 
         sufficient tests.
         """
-        self.F_up = np.exp(-delta_z*self.modk)
+        self.F_up = np.exp(-2.*np.pi*delta_z*self.modk)
         
     def buildDxOp(self):
         """The analytic expression for a derivative is available in closed form in the 
@@ -161,6 +166,28 @@ class FourierDomainOps(object):
         ky = self.fdg.ky
         dy = self.fdg.dy
         self.F_dyOp = ((2.*(0.+1.j))/dy)*np.sin(2.*np.pi*ky[:,np.newaxis]*dy)
+        
+    def buildGradVector(self,fdg):
+        """Builds the 2D gradient vector of a FDG.
+        """
+        if self.F_dxOp == None:
+            self.buildDxOp()
+        if self.F_dyOp == None:
+            self.buildDyOp()
+        try:
+            assert not (fdg.hat_grid is None)
+        except:
+            fdg.setHatGrid(fdg.simpleFFT(fdg.spatial_grid))
+        dxVect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
+        dxVect.setHatGrid(self.F_dxOp*fdg.hat_grid)
+        dxVect.setSpatialGrid(dxVect.simpleIFFT(dxVect.hat_grid))
+        dyVect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
+        dyVect.setHatGrid(self.F_dyOp*fdg.hat_grid)
+        dyVect.setSpatialGrid(dyVect.simpleIFFT(dyVect.hat_grid))
+        return (dxVect,dyVect)
+        
+            
+            
     
      
 if __name__ == '__main__':
