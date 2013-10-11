@@ -1,11 +1,12 @@
 import numpy as np
+import FourierDomainGrid as GRID
+from Utility import isclose
 
 class FourierDomainOps(object):
     """Deal with Fourier Domain entities and Operators.
     
     Usage examples (and Doctests)
     
-    >>> import FourierDomainGrid as GRID
     >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
     >>> bar.setSpatialGrid(np.ones((512,256),dtype=np.complex))
     >>> bar.setHatGrid(bar.simpleFFT(bar.spatial_grid))
@@ -90,6 +91,86 @@ class FourierDomainOps(object):
     >>> upcontBar.setSpatialGrid(upcontBar.simpleIFFT(upcontBar.hat_grid))
     >>> assert np.allclose(np.sum(upcontBar.spatial_grid),1.0)
     
+    # Test buildGradVector
+    >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
+    >>> bar.spatial_grid[255,127] = 1.0
+    >>> bar.setHatGrid(bar.simpleFFT(bar.spatial_grid))
+    >>> foo = FourierDomainOps(bar) #We have hat_grid already
+    >>> (x_vect,y_vect) = foo.buildGradVector(bar)
+    >>> assert isinstance(x_vect, GRID.FourierDomainGrid)
+    >>> assert isinstance(y_vect, GRID.FourierDomainGrid)
+    >>> assert x_vect.hat_grid.shape == (512,256)
+    >>> assert y_vect.hat_grid.shape == (512,256)
+    >>> assert x_vect.spatial_grid.shape == (512,256)
+    >>> assert y_vect.spatial_grid.shape == (512,256)
+    >>> del foo
+    >>> del bar
+    
+    >>> bar = GRID.FourierDomainGrid(dx=1.0,dy=1.0)
+    >>> bar.setSpatialGrid(np.zeros((512,256),dtype=np.complex))
+    >>> bar.spatial_grid[255,127] = 1.0
+    >>> foo = FourierDomainOps(bar) 
+    >>> (x_vect,y_vect) = foo.buildGradVector(bar)
+    >>> assert x_vect.hat_grid.shape == (512,256)
+    >>> assert y_vect.hat_grid.shape == (512,256)
+    >>> assert x_vect.spatial_grid.shape == (512,256)
+    >>> assert y_vect.spatial_grid.shape == (512,256)    
+    >>> assert np.allclose(x_vect.spatial_grid[255,125],0.0)
+    >>> assert np.allclose(x_vect.spatial_grid[255,126],1.0)
+    >>> assert np.allclose(x_vect.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(x_vect.spatial_grid[255,128],-1.0)
+    >>> assert np.allclose(x_vect.spatial_grid[255,129],0.0)
+    >>> assert np.allclose(x_vect.spatial_grid[254,:],0.0)
+    >>> assert np.allclose(x_vect.spatial_grid[256,:],0.0)
+    >>> assert np.allclose(y_vect.spatial_grid[253,127],0.0)
+    >>> assert np.allclose(y_vect.spatial_grid[254,127],1.0)
+    >>> assert np.allclose(y_vect.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(y_vect.spatial_grid[256,127],-1.0)
+    >>> assert np.allclose(y_vect.spatial_grid[257,127],0.0)
+    >>> assert np.allclose(y_vect.spatial_grid[:,126],0.0)
+    >>> assert np.allclose(y_vect.spatial_grid[:,128],0.0)
+    
+    # Test buildMod2DVect
+    >>> mod_grad = foo.buildMod2DVect(x_vect,y_vect)
+    >>> assert np.allclose(1.0, mod_grad[255,126])
+    >>> assert np.allclose(1.0, mod_grad[255,128])
+    >>> assert np.allclose(1.0, mod_grad[254,127])
+    >>> assert np.allclose(1.0, mod_grad[256,127])
+    >>> assert np.allclose(0.0, mod_grad[255,127])
+    
+    # Test buildNormed2DVect
+    >>> (unit_x,unit_y) = foo.buildUnit2DVect(x_vect,y_vect,mod_grad)
+    >>> assert np.allclose(unit_x.spatial_grid[255,125],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,126],1.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,128],-1.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,129],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[254,:],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[256,:],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[253,127],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[254,127],1.0)
+    >>> assert np.allclose(unit_y.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[256,127],-1.0)
+    >>> assert np.allclose(unit_y.spatial_grid[257,127],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[:,126],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[:,128],0.0)
+
+    >>> (unit_x,unit_y) = foo.buildUnit2DVect(x_vect,y_vect)
+    >>> assert np.allclose(unit_x.spatial_grid[255,125],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,126],1.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,128],-1.0)
+    >>> assert np.allclose(unit_x.spatial_grid[255,129],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[254,:],0.0)
+    >>> assert np.allclose(unit_x.spatial_grid[256,:],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[253,127],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[254,127],1.0)
+    >>> assert np.allclose(unit_y.spatial_grid[255,127],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[256,127],-1.0)
+    >>> assert np.allclose(unit_y.spatial_grid[257,127],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[:,126],0.0)
+    >>> assert np.allclose(unit_y.spatial_grid[:,128],0.0)
 
     """
     
@@ -170,26 +251,67 @@ class FourierDomainOps(object):
     def buildGradVector(self,fdg):
         """Builds the 2D gradient vector of a FDG.
         """
+        try:
+            assert isinstance(np.ndarray,fdg.hat_grid)
+        except:
+            fdg.setHatGrid(fdg.simpleFFT(fdg.spatial_grid))
+            
+        try:
+            assert isinstance(np.ndarray,fdg.kx)
+            assert isinstance(np.ndarray,fdg,ky)
+        except:
+            fdg.buildWavenumbers(fdg.hat_grid)   
+
         if self.F_dxOp == None:
             self.buildDxOp()
         if self.F_dyOp == None:
             self.buildDyOp()
-        try:
-            assert not (fdg.hat_grid is None)
-        except:
-            fdg.setHatGrid(fdg.simpleFFT(fdg.spatial_grid))
-        dxVect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
-        dxVect.setHatGrid(self.F_dxOp*fdg.hat_grid)
-        dxVect.setSpatialGrid(dxVect.simpleIFFT(dxVect.hat_grid))
-        dyVect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
-        dyVect.setHatGrid(self.F_dyOp*fdg.hat_grid)
-        dyVect.setSpatialGrid(dyVect.simpleIFFT(dyVect.hat_grid))
-        return (dxVect,dyVect)
         
-            
-            
+        dx_vect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
+        dx_vect.setHatGrid(self.F_dxOp*fdg.hat_grid)
+        dx_vect.setSpatialGrid(dx_vect.simpleIFFT(dx_vect.hat_grid))
+        
+        dy_vect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
+        dy_vect.setHatGrid(self.F_dyOp*fdg.hat_grid)
+        dy_vect.setSpatialGrid(dy_vect.simpleIFFT(dy_vect.hat_grid))
+        return (dx_vect,dy_vect)
     
-     
+    def buildMod2DVect(self,fdg_x,fdg_y):
+        """This code has a numerical flaw in that it will return
+        zero modulus in the diagonal FD cells (pixels) for a delta
+        function input. This is because the gradient operators are 
+        built for 1-D gradients only, and have zero entries in those
+        diagonal pixels. 
+        We will barge on, but be aware that some class of subtle numerical
+        gradient artifacts are introduced via our strategy.
+        Maybe we can fix this in future versions of the code???
+        """
+        return np.sqrt(fdg_x.spatial_grid**2 + fdg_y.spatial_grid**2)
+
+    def buildUnit2DVect(self,fdg_x,fdg_y,mod=None):
+        """Deal with normalizing vectors with possibly zero lengths.
+        """
+        if mod == None:
+            mod = self.buildMod2DVect(fdg_x,fdg_y)
+        mask = isclose(0.,mod).astype(int)
+        normed_x = GRID.FourierDomainGrid(dx=fdg_x.dx,dy=fdg_x.dy)
+        normed_x.setSpatialGrid(np.choose(mask,[fdg_x.spatial_grid/mod,0.0]))
+        normed_y = GRID.FourierDomainGrid(dx=fdg_y.dx,dy=fdg_y.dy)
+        normed_y.setSpatialGrid(np.choose(mask,[fdg_y.spatial_grid/mod,0.0]))
+        return (normed_x,normed_y)
+        
+    def CannyEdgeDetect(self,fdg):
+        """A 2D Canny edge detector using upward continuation
+        as a blurring operation, instead of a Gaussian (which would
+        be appropriate for a Diffusion equation problem).
+        Implementing: scalar-product(grad(norm(grad(f))),grad(f)/norm(grad(f))) = 0 
+        """
+        (grad_x,grad_y) = self.buildGradVector(fdg) # vector
+        norm_grad = self.buildMod2DVect(grad_x,grad_y)   # scalar
+        unit_x,unit_y = self.buildUnit2DVect(grad_x,grad_y)
+        (grad_of_norm_x,grad_of_norm_y) = self.buildGradVector(norm_grad)
+        inner_product = grad_of_norm_x*unit_x + grad_of_norm_y*unit_y
+
 if __name__ == '__main__':
     import doctest
     doctest.testmod()         
