@@ -1,6 +1,6 @@
 import numpy as np
 import FourierDomainGrid as GRID
-from Utility import isclose
+from Utility import isclose, viewRaster
 
 class FourierDomainOps(object):
     """Deal with Fourier Domain entities and Operators.
@@ -286,7 +286,8 @@ class FourierDomainOps(object):
         gradient artifacts are introduced via our strategy.
         Maybe we can fix this in future versions of the code???
         """
-        return np.sqrt(fdg_x.spatial_grid**2 + fdg_y.spatial_grid**2)
+        return np.sqrt(fdg_x.spatial_grid*fdg_x.spatial_grid + 
+                       fdg_y.spatial_grid*fdg_y.spatial_grid)
 
     def buildUnit2DVect(self,fdg_x,fdg_y,mod=None):
         """Deal with normalizing vectors with possibly zero lengths.
@@ -302,15 +303,22 @@ class FourierDomainOps(object):
         
     def CannyEdgeDetect(self,fdg):
         """A 2D Canny edge detector using upward continuation
-        as a blurring operation, instead of a Gaussian (which would
+        as a blurring operation instead of a Gaussian (which would
         be appropriate for a Diffusion equation problem).
         Implementing: scalar-product(grad(norm(grad(f))),grad(f)/norm(grad(f))) = 0 
         """
         (grad_x,grad_y) = self.buildGradVector(fdg) # vector
-        norm_grad = self.buildMod2DVect(grad_x,grad_y)   # scalar
+        norm_grad = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
+        norm_grad.setSpatialGrid(self.buildMod2DVect(grad_x,grad_y))   # scalar
         unit_x,unit_y = self.buildUnit2DVect(grad_x,grad_y)
         (grad_of_norm_x,grad_of_norm_y) = self.buildGradVector(norm_grad)
-        inner_product = grad_of_norm_x*unit_x + grad_of_norm_y*unit_y
+        inner_product = (grad_of_norm_x.spatial_grid*unit_x.spatial_grid +
+                         grad_of_norm_y.spatial_grid*unit_y.spatial_grid)
+        signs = np.array(inner_product >= 0., np.int)
+        diffs_0 = np.diff(signs,axis=0)
+        diffs_1 = np.diff(signs,axis=1)
+        diffs = diffs_0 + diffs_1
+        return diffs
 
 if __name__ == '__main__':
     import doctest
