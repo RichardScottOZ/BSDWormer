@@ -1,14 +1,13 @@
 import numpy as np
-#import scipy as sp
 from osgeo import gdalnumeric
 from osgeo import gdal
-#from osgeo import ogr
-#from osgeo import osr
-#from osgeo import gdal_array
 from osgeo import gdalconst
 from matplotlib import pyplot as plt
 import os.path
-#from matplotlib import image as mpimg
+import FourierDomainGrid as GRID
+import FourierDomainOps as FDO
+from Utility import isclose, viewRaster
+
 
 class Wormer(object):
     """Overview of whole worming method.
@@ -25,7 +24,8 @@ class Wormer(object):
     >>> foo.importGdalRaster(filename)
     >>> assert foo.gdal_input_filename == filename
     >>> assert foo.base_grid.shape == (2048,1536)
-    >>> foo.viewRaster(foo.base_grid)
+    >>> #foo.viewRaster(foo.base_grid)
+    >>> foo.viewRaster(foo.wormLevel(dz=foo.dy))
     
     """
     
@@ -42,13 +42,33 @@ class Wormer(object):
         """
         self.gdal_input_filename = gdal_filename
         self.setBaseGrid(np.array(gdalnumeric.LoadFile(self.gdal_input_filename)))
+        self.ds = gdal.Open(self.gdal_input_filename,gdalconst.GA_ReadOnly) 
+        self.geomat = self.ds.GetGeoTransform()
+        # FIXME: the following assumes North is up in the image
+        self.dx = self.geomat[1]
+        self.dy = self.geomat[5]
         
     def viewRaster(self,numpy_grid):
         plt.imshow(numpy_grid)
         plt.show()
+        
+    def wormLevel(self,dz):
+        import pdb; pdb.set_trace()
+        fdg = GRID.FourierDomainGrid(dx=self.dx, dy=self.dy)
+        fdg.setSpatialGrid(self.base_grid)
+        fdg.setHatGrid(fdg.simpleFFT(fdg.spatial_grid.astype(np.complex)))
+        fdg.buildWavenumbers(fdg.spatial_grid)
+        up_fdg = GRID.FourierDomainGrid(dx=self.dx, dy=self.dy)
+        fdo = FDO.FourierDomainOps(fdg)
+        fdo.buildModK()
+        fdo.buildUpwardContinuationOp(dz)
+        up_fdg.setHatGrid(fdg.hat_grid * fdo.F_up)
+        up_fdg.setSpatialGrid(up_fdg.simpleIFFT(up_fdg.hat_grid))
+        bar = fdo.CannyEdgeDetect(up_fdg)
+        return bar
 
-    
-
+        
+        
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
