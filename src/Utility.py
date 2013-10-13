@@ -1,4 +1,11 @@
 import numpy as np
+from matplotlib import pyplot as plt
+
+    
+def viewRaster(numpy_grid):
+    plt.imshow(numpy_grid)
+    plt.show()
+
 
 
 def isclose(a, b, rtol=1.e-5, atol=1.e-8, check_invalid=True):
