@@ -314,11 +314,23 @@ class FourierDomainOps(object):
         (grad_of_norm_x,grad_of_norm_y) = self.buildGradVector(norm_grad)
         inner_product = (grad_of_norm_x.spatial_grid*unit_x.spatial_grid +
                          grad_of_norm_y.spatial_grid*unit_y.spatial_grid)
-        signs = np.array(inner_product >= 0., np.int)
-        diffs_0 = np.diff(signs,axis=0)
-        diffs_1 = np.diff(signs,axis=1)
-        diffs = diffs_0 + diffs_1
-        return diffs
+        return self.zeroCrossings(inner_product)
+#         signs = np.array(inner_product >= 0., np.int)
+#         diffs_0 = np.diff(signs,axis=0)
+#         diffs_1 = np.diff(signs,axis=1)
+#         diffs = diffs_0 + diffs_1
+#         return diffs
+
+    def zeroCrossings(self,fct):
+        fct_px = np.roll(fct,+1,axis=1)
+        fct_mx = np.roll(fct,-1,axis=1)
+        fct_py = np.roll(fct,+1,axis=0)
+        fct_my = np.roll(fct,-1,axis=0)
+        pxc = np.where(fct*fct_px < 0.,True,False)
+        mxc = np.where(fct*fct_mx < 0.,True,False)
+        pyc = np.where(fct*fct_py < 0.,True,False)
+        myc = np.where(fct*fct_my < 0.,True,False)
+        return (pxc | mxc | pyc | myc)
 
 if __name__ == '__main__':
     import doctest

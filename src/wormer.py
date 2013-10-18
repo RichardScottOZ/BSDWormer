@@ -53,7 +53,7 @@ class Wormer(object):
         plt.show()
         
     def wormLevel(self,dz):
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         fdg = GRID.FourierDomainGrid(dx=self.dx, dy=self.dy)
         fdg.setSpatialGrid(self.base_grid)
         fdg.setHatGrid(fdg.simpleFFT(fdg.spatial_grid.astype(np.complex)))
