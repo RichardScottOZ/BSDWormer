@@ -337,12 +337,14 @@ class FourierDomainOps(object):
         fct_py = np.roll(fct,+1,axis=0)
         fct_pxpy = np.roll(np.roll(fct,+1,axis=0),+1,axis=1)
         # See the ipython notebook for the logic behind this algorithm.
+        np.seterr(divide='ignore') # temporarily turn off zerodivide warnings
         s_px = fct / (fct - fct_px)
         zc_px = (0. <= s_px) & (s_px <= 1.0)
         s_py = fct / (fct - fct_py)
         zc_py = (0. <= s_py) & (s_py <= 1.0)
         s_pxpy = fct / (fct - fct_pxpy)
         zc_pxpy = (0. <= s_pxpy) & (s_pxpy <= 1.0)
+        np.seterr(divide='warn') # turn back on zerodivide warnings
         return (zc_px | zc_py | zc_pxpy)
 
 if __name__ == '__main__':
