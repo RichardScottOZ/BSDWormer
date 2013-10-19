@@ -314,7 +314,7 @@ class FourierDomainOps(object):
         (grad_of_norm_x,grad_of_norm_y) = self.buildGradVector(norm_grad)
         inner_product = (grad_of_norm_x.spatial_grid*unit_x.spatial_grid +
                          grad_of_norm_y.spatial_grid*unit_y.spatial_grid)
-        return self.zeroCrossings(inner_product)
+        return self.simpleZeroCrossings(inner_product)
 #         signs = np.array(inner_product >= 0., np.int)
 #         diffs_0 = np.diff(signs,axis=0)
 #         diffs_1 = np.diff(signs,axis=1)
@@ -338,11 +338,11 @@ class FourierDomainOps(object):
         fct_pxpy = np.roll(np.roll(fct,+1,axis=0),+1,axis=1)
         # See the ipython notebook for the logic behind this algorithm.
         s_px = fct / (fct - fct_px)
-        zc_px = np.where((0. <= s_px) & (s_px <= 1.0), True, False)
+        zc_px = (0. <= s_px) & (s_px <= 1.0)
         s_py = fct / (fct - fct_py)
-        zc_py = np.where((0. <= s_py) & (s_py <= 1.0), True, False)
+        zc_py = (0. <= s_py) & (s_py <= 1.0)
         s_pxpy = fct / (fct - fct_pxpy)
-        zc_pxpy = np.where((0. <= s_pxpy) & (s_pxpy <= 1.0), True, False)
+        zc_pxpy = (0. <= s_pxpy) & (s_pxpy <= 1.0)
         return (zc_px | zc_py | zc_pxpy)
 
 if __name__ == '__main__':
