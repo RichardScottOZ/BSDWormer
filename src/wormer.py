@@ -25,7 +25,7 @@ class Wormer(object):
     >>> assert foo.gdal_input_filename == filename
     >>> assert foo.base_grid.shape == (2048,1536)
     >>> #foo.viewRaster(foo.base_grid)
-    >>> foo.viewRaster(foo.wormLevel(dz=foo.dy))
+    >>> foo.viewRaster(foo.wormLevel(dz=-10.*foo.dy))
     
     """
     
