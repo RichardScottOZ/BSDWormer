@@ -314,7 +314,8 @@ class FourierDomainOps(object):
         (grad_of_norm_x,grad_of_norm_y) = self.buildGradVector(norm_grad)
         inner_product = (grad_of_norm_x.spatial_grid*unit_x.spatial_grid +
                          grad_of_norm_y.spatial_grid*unit_y.spatial_grid)
-        return self.simpleZeroCrossings(inner_product)
+        return np.where(self.simpleZeroCrossings(inner_product), norm_grad.spatial_grid.real , -100.)
+#        return self.simpleZeroCrossings(inner_product)
 #         signs = np.array(inner_product >= 0., np.int)
 #         diffs_0 = np.diff(signs,axis=0)
 #         diffs_1 = np.diff(signs,axis=1)

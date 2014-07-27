@@ -1,12 +1,25 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import sys
+sys.path += ['/Users/frank/Documents/Src/Git Stuff/BSDWormer/src/Py3Vtk/pyvtk/build/lib/pyvtk']
+import pyvtk as PV
 
-    
+
 def viewRaster(numpy_grid):
     plt.imshow(numpy_grid)
     plt.show()
 
-
+def writeVtkImage(filename,image,origin,spacing):
+    image_points = [val for val in np.ravel(image)]
+    image_coords = [image.shape[1],image.shape[0],1]
+    vtk = PV.VtkData(PV.StructuredPoints(image_coords,
+                                         origin=origin,
+                                         spacing=spacing),
+                     'Image',
+                     PV.PointData(PV.Scalars(image_points,name='field vals')),
+                     'Image Data'
+                    )
+    vtk.tofile(filename+"_image.vtk")
 
 def isclose(a, b, rtol=1.e-5, atol=1.e-8, check_invalid=True):
     """Similar to numpy.allclose, but returns a boolean array.

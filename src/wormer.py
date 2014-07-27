@@ -48,9 +48,10 @@ class Wormer(object):
         self.dx = self.geomat[1]
         self.dy = self.geomat[5]
         
-    def viewRaster(self,numpy_grid):
-        plt.imshow(numpy_grid)
-        plt.show()
+    def exportNewGdalRaster(self, narray, gdal_filename, format='ERS'):
+        """Export a numpy array into a GDAL image, using the initial image as a prototype.
+        """
+        gdalnumeric.SaveArray( narray, gdal_filename, format = format, prototype = self.ds )
         
     def wormLevel(self,dz):
         # import pdb; pdb.set_trace()
