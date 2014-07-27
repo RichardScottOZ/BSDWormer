@@ -1,0 +1,13 @@
+DatasetHeader Begin
+	Version		 = "6.0"
+	Name		= "0.128000_GTPaddedUpstateNY.ers"
+	DataSetType	= ERStorage
+	DataType	= Raster
+	ByteOrder	= LSBFirst
+	RasterInfo Begin
+		CellType	= IEEE8ByteReal
+		NrOfLines	= 512
+		NrOfCellsPerLine	= 512
+		NrOfBands	= 1
+	RasterInfo End
+DatasetHeader End
