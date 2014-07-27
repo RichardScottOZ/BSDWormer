@@ -1,6 +1,6 @@
 import numpy as np
 import FourierDomainGrid as GRID
-from Utility import isclose, viewRaster
+from Utility import isclose
 
 class FourierDomainOps(object):
     """Deal with Fourier Domain entities and Operators.
@@ -258,7 +258,7 @@ class FourierDomainOps(object):
             
         try:
             assert isinstance(np.ndarray,fdg.kx)
-            assert isinstance(np.ndarray,fdg,ky)
+            assert isinstance(np.ndarray,fdg.ky)
         except:
             fdg.buildWavenumbers(fdg.hat_grid)   
 
