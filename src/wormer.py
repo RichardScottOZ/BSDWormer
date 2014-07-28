@@ -7,6 +7,7 @@ import os.path
 import FourierDomainGrid as GRID
 import FourierDomainOps as FDO
 from Utility import isclose, viewRaster
+from scipy.ndimage.measurements import label
 
 
 class Wormer(object):
@@ -25,7 +26,7 @@ class Wormer(object):
     >>> assert foo.gdal_input_filename == filename
     >>> assert foo.base_grid.shape == (2048,1536)
     >>> #foo.viewRaster(foo.base_grid)
-    >>> foo.viewRaster(foo.wormLevel(dz=-10.*foo.dy))
+    >>> viewRaster(foo.wormLevel(dz=-10.*foo.dy))
     
     """
     
@@ -48,10 +49,10 @@ class Wormer(object):
         self.dx = self.geomat[1]
         self.dy = self.geomat[5]
         
-    def exportNewGdalRaster(self, narray, gdal_filename, format='ERS'):
+    def exportNewGdalRaster(self, narray, gdal_filename, fmt='ERS'):
         """Export a numpy array into a GDAL image, using the initial image as a prototype.
         """
-        gdalnumeric.SaveArray( narray, gdal_filename, format = format, prototype = self.ds )
+        gdalnumeric.SaveArray( narray, gdal_filename, format = fmt, prototype = self.ds )
         
     def wormLevel(self,dz):
         # import pdb; pdb.set_trace()
@@ -67,6 +68,16 @@ class Wormer(object):
         up_fdg.setSpatialGrid(up_fdg.simpleIFFT(up_fdg.hat_grid))
         bar = fdo.CannyEdgeDetect(up_fdg)
         return bar
+    
+    def collectWorms(self,level_image, structure=np.ones((3,3))):
+        """Takes level_image and labels all of the connected things.
+        'connected' is defined by whatever is touching within the
+        structuring element -- which defaults to all pixels one
+        step away in primary or diagonal directions.
+        Returns an array holding the labels, and the number of labels.
+        """
+        (lbls,n_labels) = label(level_image > -100.,structure=structure)
+        return (lbls,n_labels)
 
         
         
