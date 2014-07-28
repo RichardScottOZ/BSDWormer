@@ -8,6 +8,8 @@ import FourierDomainGrid as GRID
 import FourierDomainOps as FDO
 from Utility import isclose, viewRaster
 from scipy.ndimage.measurements import label
+from scipy import spatial
+
 
 
 class Wormer(object):
@@ -78,6 +80,48 @@ class Wormer(object):
         """
         (lbls,n_labels) = label(level_image > -100.,structure=structure)
         return (lbls,n_labels)
+    
+    def orderedGenerator(self,points):
+        """A Generator that yields nodes that are neighbors from the input array points.
+        
+        It returns a 2-tuple, the first item being the index of the neighbor, and the second
+        item being True if a break in the chain is encountered.
+        """
+        used = np.zeros(len(points),dtype=np.bool_)
+        tree = spatial.KDTree(points)
+        last_point = points[0]
+        for pt in range(len(points)):    # Outer loop; ensure we get all of the nodes
+            if used[pt]:
+                continue                 # We've already used this node
+            dist = np.linalg.norm(pt-last_point)
+            yield (pt,(dist>2.))        # Yield it to the caller
+            last_point = pt              # Keep the last point
+            used[pt] = True              # Mark it as being used
+            neighbors = tree.query(points[pt],k=3,distance_upper_bound=1.5) # Should only yield touching points
+            """This strategy assumes there are only two neighbors to each node.
+            WARNING! This will probably fail silently if we encounter a 
+            'saddle point' node.
+            """
+            nb = neighbors[1][1]         # Throw away the first one returned: it is pt...
+            nb_dist = neighbors[0][1]
+            if used[nb] or (nb_dist > 2.): # Missing neighbors are indicated with infinite distances; this should catch that
+                nb = neighbors[1][2]     # use the _other_ neighbor...
+                nb_dist = neighbors[0][2]
+            try:
+                while (not used[nb]) and (nb_dist < 2.):
+                    dist = np.linalg.norm(nb-last_point)
+                    yield (nb,(dist>2.))    # yield it to the caller
+                    last_point = nb          # Keep the last point
+                    used[nb] = True          # and mark it as being used
+                    neighbors = tree.query(points[nb],k=3,distance_upper_bound=1.5)
+                    nb = neighbors[1][1]     # Throw away the first one returned: it is pt...
+                    nb_dist = neighbors[0][1]
+                    if used[nb] or (nb_dist > 2.):
+                        nb = neighbors[1][2] # use the _other_ neighbor...
+                        nb_dist = neighbors[0][2]
+            except IndexError:
+                pass
+            
 
         
         
