@@ -21,6 +21,15 @@ def writeVtkImage(filename,image,origin,spacing):
                     )
     vtk.tofile(filename+"_image.vtk")
 
+def writeVtkWorms(filename,points,segments,vals):
+    vtk = PV.VtkData(PV.PolyData(points=points,
+                                 lines=segments),
+                     'Worm Segments',
+                     PV.PointData(PV.Scalars(np.fabs(vals),name='mutliscale edge magnitudes')),
+                     'Edge Magnitudes'
+                    )
+    vtk.tofile(filename+"_worms.vtk")
+
 def isclose(a, b, rtol=1.e-5, atol=1.e-8, check_invalid=True):
     """Similar to numpy.allclose, but returns a boolean array.
     See numpy.allclose for an explanation of *rtol* and *atol*.
@@ -57,6 +66,99 @@ def isclose(a, b, rtol=1.e-5, atol=1.e-8, check_invalid=True):
         # NaN equality...
         cond[np.isnan(x) & np.isnan(y)] = True
         return cond
+    
+"""The following code comes from 
+<https://gis.stackexchange.com/questions/57834/how-to-get-raster-corner-coordinates-using-python-gdal-bindings>
+and supposedly comes from the metageta project <https://code.google.com/p/metageta/>
+which is MIT licensed but with the "MetaGETA name substituted for MIT..
+I reproduce the text of the MIT license here to (hopefully) remain in 
+compliance with the terms of that license.
+
+MetaGETA license
+
+Copyright (c) 2013 Australian Government, Department of the Environment
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+"""
+from osgeo import gdal,ogr,osr
+
+def GetExtent(gt,cols,rows):
+    ''' Return list of corner coordinates from a geotransform
+
+        @type gt:   C{tuple/list}
+        @param gt: geotransform
+        @type cols:   C{int}
+        @param cols: number of columns in the dataset
+        @type rows:   C{int}
+        @param rows: number of rows in the dataset
+        @rtype:    C{[float,...,float]}
+        @return:   coordinates of each corner
+    '''
+    ext=[]
+    xarr=[0,cols]
+    yarr=[0,rows]
+
+    for px in xarr:
+        for py in yarr:
+            x=gt[0]+(px*gt[1])+(py*gt[2])
+            y=gt[3]+(px*gt[4])+(py*gt[5])
+            ext.append([x,y])
+            print(x,y)
+        yarr.reverse()
+    return ext
+
+def ReprojectCoords(coords,src_srs,tgt_srs):
+    ''' Reproject a list of x,y coordinates.
+
+        @type geom:     C{tuple/list}
+        @param geom:    List of [[x,y],...[x,y]] coordinates
+        @type src_srs:  C{osr.SpatialReference}
+        @param src_srs: OSR SpatialReference object
+        @type tgt_srs:  C{osr.SpatialReference}
+        @param tgt_srs: OSR SpatialReference object
+        @rtype:         C{tuple/list}
+        @return:        List of transformed [[x,y],...[x,y]] coordinates
+    '''
+    trans_coords=[]
+    transform = osr.CoordinateTransformation( src_srs, tgt_srs)
+    for x,y in coords:
+        x,y,z = transform.TransformPoint(x,y)
+        trans_coords.append([x,y])
+    return trans_coords
+
+""" This is converted into a doctest...
+    >>> raster=r'somerasterfile.tif'
+    >>> ds=gdal.Open(raster)
+
+    >>> gt=ds.GetGeoTransform()
+    >>> cols = ds.RasterXSize
+    >>> rows = ds.RasterYSize
+    >>> ext=GetExtent(gt,cols,rows)
+
+    >>> src_srs=osr.SpatialReference()
+    >>> src_srs.ImportFromWkt(ds.GetProjection())
+    >>> #tgt_srs=osr.SpatialReference()
+    >>> #tgt_srs.ImportFromEPSG(4326)
+    >>> tgt_srs = src_srs.CloneGeogCS()
+
+    >>> geo_ext=ReprojectCoords(ext,src_srs,tgt_srs)
+"""
 
 if __name__ == '__main__':
     import doctest
