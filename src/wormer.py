@@ -9,6 +9,8 @@ import FourierDomainOps as FDO
 from Utility import isclose, viewRaster
 from scipy.ndimage.measurements import label
 from scipy import spatial
+import networkx as nx
+
 
 
 
@@ -68,61 +70,60 @@ class Wormer(object):
         fdo.buildUpwardContinuationOp(dz)
         up_fdg.setHatGrid(fdg.hat_grid * fdo.F_up)
         up_fdg.setSpatialGrid(up_fdg.simpleIFFT(up_fdg.hat_grid))
-        bar = fdo.CannyEdgeDetect(up_fdg)
-        return bar
+        self.worm_image = fdo.CannyEdgeDetect(up_fdg)
+        return self.worm_image
     
-    def collectWorms(self,level_image, structure=np.ones((3,3))):
-        """Takes level_image and labels all of the connected things.
-        'connected' is defined by whatever is touching within the
-        structuring element -- which defaults to all pixels one
-        step away in primary or diagonal directions.
-        Returns an array holding the labels, and the number of labels.
-        """
-        (lbls,n_labels) = label(level_image > -100.,structure=structure)
-        return (lbls,n_labels)
-    
-    def orderedGenerator(self,points):
-        """A Generator that yields nodes that are neighbors from the input array points.
+    def buildGraph(self,seg,vals):
+        self.G = nx.Graph()
+        tree = spatial.KDTree(seg)
+        for i,s in enumerate(seg):
+            neighbors = tree.query(s,k=3,distance_upper_bound=1.42)
+            self.G.add_node(i,pos=tuple(s),val=vals[i])
+            n1 = neighbors[1][1]
+            self.G.add_edge(i,n1)
+            n2 = neighbors[1][2]
+            self.G.add_edge(i,n2)
         
-        It returns a 2-tuple, the first item being the index of the neighbor, and the second
-        item being True if a break in the chain is encountered.
-        """
-        used = np.zeros(len(points),dtype=np.bool_)
-        tree = spatial.KDTree(points)
-        last_point = points[0]
-        for pt in range(len(points)):    # Outer loop; ensure we get all of the nodes
-            if used[pt]:
-                continue                 # We've already used this node
-            dist = np.linalg.norm(pt-last_point)
-            yield (pt,(dist>2.))        # Yield it to the caller
-            last_point = pt              # Keep the last point
-            used[pt] = True              # Mark it as being used
-            neighbors = tree.query(points[pt],k=3,distance_upper_bound=1.5) # Should only yield touching points
-            """This strategy assumes there are only two neighbors to each node.
-            WARNING! This will probably fail silently if we encounter a 
-            'saddle point' node.
-            """
-            nb = neighbors[1][1]         # Throw away the first one returned: it is pt...
-            nb_dist = neighbors[0][1]
-            if used[nb] or (nb_dist > 2.): # Missing neighbors are indicated with infinite distances; this should catch that
-                nb = neighbors[1][2]     # use the _other_ neighbor...
-                nb_dist = neighbors[0][2]
-            try:
-                while (not used[nb]) and (nb_dist < 2.):
-                    dist = np.linalg.norm(nb-last_point)
-                    yield (nb,(dist>2.))    # yield it to the caller
-                    last_point = nb          # Keep the last point
-                    used[nb] = True          # and mark it as being used
-                    neighbors = tree.query(points[nb],k=3,distance_upper_bound=1.5)
-                    nb = neighbors[1][1]     # Throw away the first one returned: it is pt...
-                    nb_dist = neighbors[0][1]
-                    if used[nb] or (nb_dist > 2.):
-                        nb = neighbors[1][2] # use the _other_ neighbor...
-                        nb_dist = neighbors[0][2]
-            except IndexError:
-                pass
-            
-
+    def buildWormSegs(self):
+        worm_points = np.argwhere(self.worm_image > -100)
+        worm_vals = self.worm_image[worm_points[:,0],worm_points[:,1]]
+        self.buildGraph(worm_points,worm_vals)
+        mst = nx.minimum_spanning_tree(self.G)
+        num_nodes = worm_points.shape[0]
+        visited = np.zeros(num_nodes+1,dtype=np.bool_)
+        self.segs = []
+        for nd in range(num_nodes+1):                       # Loop over all nodes
+            if not visited[nd]:                             # Check to see if we've been here before
+                dfst = nx.dfs_tree(mst,nd)                  # Build a Depth First Search Tree rooted at nd 
+                visited[nd] = True                          # Mark nd as visited
+                bingo = []                                  # Start a new list to hold results; will be included as element in master list
+                last_node = nd                              # Initialize last_node
+                for (source,dest,d) in nx.dfs_labeled_edges(dfst,nd):
+                    # Run through the labeled edges of a Depth First Search 
+                    if d['dir'] != 'forward':
+                        # Backtracking or out of tree edge; not interested
+                        continue
+                    if source == dest:
+                        # Root of tree
+                        last_node = dest                    # Initialize last node
+                        visited[dest] = True                # and mark dest visited
+                        continue
+                    if source >= num_nodes or dest >= num_nodes:
+                        # FIXME: HACK!!! Got to figure out what's going on here
+                        # Although, this does seem to help with fixing
+                        # the "slash through everything" edges...
+                        # A mystery.
+                        continue
+                    if last_node != source:
+                        # We've switched branches!
+                        self.segs += [bingo]                # Add the accumulated edges to segs
+                        bingo = [(source,dest)]             # and initialize a new bingo list with this edge
+                    else:
+                        # We're tracking a single branch (last_node == source)
+                        bingo += [(source,dest)]            # Add the new edge to the bingo list
+                    last_node = dest
+                    visited[dest] = True
+                self.segs += [bingo]                        # Add the last bingo list
         
         
 if __name__ == '__main__':
