@@ -2,14 +2,15 @@ import numpy as np
 from osgeo import gdalnumeric
 from osgeo import gdal
 from osgeo import gdalconst
-from matplotlib import pyplot as plt
-import os.path
+#from matplotlib import pyplot as plt
+#import os.path
 import FourierDomainGrid as GRID
 import FourierDomainOps as FDO
-from Utility import isclose, viewRaster
-from scipy.ndimage.measurements import label
+#from Utility import isclose, viewRaster
+#from scipy.ndimage.measurements import label
 from scipy import spatial
 import networkx as nx
+from Utility import writeVtkWorms
 
 
 
@@ -30,7 +31,7 @@ class Wormer(object):
     >>> assert foo.gdal_input_filename == filename
     >>> assert foo.base_grid.shape == (2048,1536)
     >>> #foo.viewRaster(foo.base_grid)
-    >>> viewRaster(foo.wormLevel(dz=-10.*foo.dy))
+    >>> viewRaster(foo.wormLevelAsImage(dz=-10.*foo.dy))
     
     """
     
@@ -58,7 +59,7 @@ class Wormer(object):
         """
         gdalnumeric.SaveArray( narray, gdal_filename, format = fmt, prototype = self.ds )
         
-    def wormLevel(self,dz):
+    def wormLevelAsImage(self,dz):
         # import pdb; pdb.set_trace()
         fdg = GRID.FourierDomainGrid(dx=self.dx, dy=self.dy)
         fdg.setSpatialGrid(self.base_grid)
@@ -101,7 +102,7 @@ class Wormer(object):
                 for (source,dest,d) in nx.dfs_labeled_edges(dfst,nd):
                     # Run through the labeled edges of a Depth First Search 
                     if d['dir'] != 'forward':
-                        # Backtracking or out of tree edge; not interested
+                        # Backtracking or out-of-spanning-tree edge; not interested
                         continue
                     if source == dest:
                         # Root of tree
@@ -124,6 +125,33 @@ class Wormer(object):
                     last_node = dest
                     visited[dest] = True
                 self.segs += [bingo]                        # Add the last bingo list
+                
+    def writeLevelAsVTK(self,dz,filename):
+        """Computes the VTK representation of worms for a single level."""
+        # Organize the worm data so that the VTK writing stuff will swallow it...
+        max_valid_node = self.G.number_of_nodes()-1
+        all_points = [self.G.node[p]['pos'] for p in range(max_valid_node)] # The last one is empty
+        all_points = [(e[1],e[0],dz) for e in all_points] # Make sure we get East and North correct
+        all_vals = [self.G.node[p]['val'] for p in range(max_valid_node)] # The last one is empty
+        all_lines = []
+        for s in self.segs:
+            if s == []:
+                continue
+            if s[0][0] >= max_valid_node or s[0][1] >= max_valid_node:
+                continue
+            # We need to int-ify things here so we don't trip
+            # over an isinstance(foo,int) with foo as numpy.int64 in the
+            # VTK writer checks since that fails... Go figure.
+            ln = [int(s[0][0]),int(s[0][1])]
+            for edge in s[1:]:
+                if edge[1] >= max_valid_node:
+                    break
+                # Ditto...
+                ln += [int(edge[1])]
+            all_lines += [ln]
+        fn = filename + "_" + str(dz)
+        writeVtkWorms(fn,points=all_points,lines=all_lines,vals=all_vals)
+
         
         
 if __name__ == '__main__':
