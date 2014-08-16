@@ -213,6 +213,8 @@ def embed_data(indata, big_shape=(None,None), pad_size=None):
 	# Generate empty array
 	retdat = np.zeros(s, dtype=indata.dtype)
 	
+	inmean = np.mean(indata)
+	
 	# These slices denote the central region where <indata> will go
 	x_pad_2 = s[1] - indata.shape[1]
 	x_pad = floor(x_pad_2/2.0)
@@ -229,9 +231,9 @@ def embed_data(indata, big_shape=(None,None), pad_size=None):
 	#
 	# Insert the data and return it
 	if pad_size == None:
-		retdat[slice_y, slice_x] = indata
+		retdat[slice_y, slice_x] = indata - inmean
 	else:
-		retdat[pad_slice_y,pad_slice_x] = np.pad(indata,pad_width=pad_size,mode='edge')
+		retdat[pad_slice_y,pad_slice_x] = np.pad(indata-inmean,pad_width=pad_size,mode='edge')
 	return retdat, slice_y, slice_x
 
 def embed_data_old(indata, direction=1, scale=2):
