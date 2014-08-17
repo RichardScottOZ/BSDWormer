@@ -8,6 +8,22 @@ import pyvtk as PV
 def viewRaster(numpy_grid):
     plt.imshow(numpy_grid)
     plt.show()
+    
+def writeGDALRasterFromNumpyArray(dst_filename,array,geotransform,proj):
+    driver = gdal.GetDriverByName('GTiff')
+    y_pixels,x_pixels = array.shape
+
+    dataset = driver.Create(
+        dst_filename,
+        x_pixels,
+        y_pixels,
+        1,
+        gdal.GDT_Float32, )
+
+    dataset.SetGeoTransform(geotransform)  
+    dataset.SetProjection(proj)
+    dataset.GetRasterBand(1).WriteArray(array)
+    dataset.FlushCache()  # Write to disk.
 
 def writeVtkImage(filename,image,origin,spacing):
     image_points = [val for val in np.ravel(image)]
