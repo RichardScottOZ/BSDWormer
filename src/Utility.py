@@ -3,6 +3,8 @@ from matplotlib import pyplot as plt
 import sys
 sys.path += ['/Users/frank/Documents/Src/Git Stuff/BSDWormer/src/Py3Vtk/pyvtk/build/lib/pyvtk']
 import pyvtk as PV
+from osgeo import gdal,ogr,osr
+
 
 
 def viewRaster(numpy_grid):
@@ -112,7 +114,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 """
-from osgeo import gdal,ogr,osr
 
 def GetExtent(gt,cols,rows):
     ''' Return list of corner coordinates from a geotransform
