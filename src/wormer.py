@@ -36,6 +36,9 @@ class Wormer(object):
     
     def __init__(self):
         self.base_grid = None
+        self.all_points = None
+        self.all_lines = None
+        self.all_vals = None
         
     def setBaseGrid(self,grid):
         """Setter for base_grid
@@ -169,6 +172,48 @@ class Wormer(object):
         fn = filename + "_" + str(dz)
         writeVtkWorms(fn,points=all_points,lines=all_lines,vals=all_vals)
         
+    def buildLevelForVTK(self,dz,filename, invert_z = True):
+        """Computes the VTK representation of worms for a single level."""
+        # Organize the worm data so that the VTK writing stuff will swallow it...
+        max_valid_node = self.G.number_of_nodes()-1
+        self.all_points = [self.G.node[p]['geog_pos'] for p in range(max_valid_node)] # The last one is empty; in Geographic coords
+
+        if invert_z:
+            dz = -dz
+        all_points = [(e[0],e[1],dz*self.dx) for e in all_points] # Make sure we get East and North correct
+        if self.all_points == None:
+            self.all_points = all_points
+        else:
+            self.all_points += all_points
+        all_vals = [self.G.node[p]['val'] for p in range(max_valid_node)] # The last one is empty
+        all_lines = []
+        for s in self.segs:
+            if s == []:
+                continue
+            if s[0][0] >= max_valid_node or s[0][1] >= max_valid_node:
+                continue
+            # We need to int-ify things here so we don't trip
+            # over an isinstance(foo,int) with foo as numpy.int64 in the
+            # VTK writer checks since that fails... Go figure.
+            ln = [int(s[0][0]),int(s[0][1])]
+            for edge in s[1:]:
+                if edge[1] >= max_valid_node:
+                    break
+                # Ditto...
+                ln += [int(edge[1])]
+            all_lines += [ln]
+            
+        if self.all_vals == None:
+            self.all_vals = all_vals
+        else:
+            self.all_vals += all_vals
+            
+        if self.all_lines == None:
+            self.all_lines = all_lines
+        else:
+            self.all_lines += all_lines
+
+
     def buildPaddedRaster(self,padded_shape,rolloff_size = 100,pad_type='hann'):
         """Returns an 'apodized' padded version of base_grid.
         
