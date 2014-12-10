@@ -85,7 +85,7 @@ class Wormer(object):
             n2 = neighbors[1][2]
             self.G.add_edge(i,n2)
         
-    def buildWormSegs(self,nodata = -100, clipped=True, log_vals = True,dz=None):
+    def buildWormSegs(self,nodata = -100, clipped=True, log_vals = True, dz=None):
         if clipped:
             # The coords returned by np.argwhere are setting the start of 
             # the clipping region to corrdinates (0,0)
@@ -98,9 +98,10 @@ class Wormer(object):
             worm_points = np.argwhere(self.worm_image > nodata)
             worm_vals = self.worm_image[worm_points[:,0],worm_points[:,1]]
             gt = self.padded_geotransform
+        worm_vals *= dz
         if log_vals:
             worm_vals = np.log10(worm_vals)
-        self.buildGraph(worm_points,dz*worm_vals,gt)
+        self.buildGraph(worm_points,worm_vals,gt)
         mst = nx.minimum_spanning_tree(self.G)
         num_nodes = worm_points.shape[0]
         visited = np.zeros(num_nodes+1,dtype=np.bool_)
