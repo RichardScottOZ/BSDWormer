@@ -1,0 +1,3 @@
+[submodule "wiki"]
+	path = wiki
+	url = https://fghorow@bitbucket.org/fghorow/bsdwormer.git/wiki
