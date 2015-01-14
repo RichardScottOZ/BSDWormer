@@ -5,7 +5,7 @@ Placeholder for now...
 ### What is this repository for? ###
 
 * A BSD licensed re-implementation of the Poisson wavelet multiscale edge ("worm") code for geophysical potential fields.
-* 0.1
+* Version 0.1 (running code; little support for installation, usage, etc. etc. etc.)
 * [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
 
 ### How do I get set up? ###
