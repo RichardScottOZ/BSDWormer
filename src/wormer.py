@@ -92,6 +92,9 @@ class Wormer(object):
             self.G[dz].add_edge(i,n1)
             n2 = neighbors[1][2]
             self.G[dz].add_edge(i,n2)
+        # remove duplicate edges 
+        # <http://networkx.lanl.gov/reference/generated/networkx.generators.degree_seq.configuration_model.html>
+        self.G[dz] = nx.Graph(self.G[dz])
         
     def buildWormSegs(self,nodata_in_worm_image = -100, clipped=True, log_vals = True, dz=None):            
         if clipped:
