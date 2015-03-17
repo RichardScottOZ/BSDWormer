@@ -36,9 +36,10 @@ class Wormer(object):
     
     def __init__(self):
         self.base_grid = None
-        self.all_points = None
-        self.all_lines = None
-        self.all_vals = None
+        self.all_points = {}
+        self.all_lines = {}
+        self.all_vals = {}
+        self.G = {}
         
     def setBaseGrid(self,grid):
         """Setter for base_grid
@@ -76,17 +77,17 @@ class Wormer(object):
         self.worm_image = fdo.CannyEdgeDetect(up_fdg)
         return self.worm_image
     
-    def buildGraph(self,seg,vals,geotransform):
-        self.G = nx.Graph()
+    def buildGraph(self,seg,vals,geotransform,dz):
+        self.G[dz] = nx.Graph()
         tree = spatial.KDTree(seg)
         for i,s in enumerate(seg):
             neighbors = tree.query(s,k=3,distance_upper_bound=1.42)
             geographic = PixelToMap(s[1],s[0],geotransform)
-            self.G.add_node(i,pos=tuple(s),val=vals[i],geog_pos=geographic)
+            self.G[dz].add_node(i,pos=tuple(s),val=vals[i],geog_pos=geographic)
             n1 = neighbors[1][1]
-            self.G.add_edge(i,n1)
+            self.G[dz].add_edge(i,n1)
             n2 = neighbors[1][2]
-            self.G.add_edge(i,n2)
+            self.G[dz].add_edge(i,n2)
         
     def buildWormSegs(self,nodata = -100, clipped=True, log_vals = True, dz=None):
         if clipped:
@@ -104,8 +105,8 @@ class Wormer(object):
         worm_vals *= dz
         if log_vals:
             worm_vals = np.log10(worm_vals)
-        self.buildGraph(worm_points,worm_vals,gt)
-        mst = nx.minimum_spanning_tree(self.G)
+        self.buildGraph(worm_points,worm_vals,gt,dz)
+        mst = nx.minimum_spanning_tree(self.G[dz])
         num_nodes = worm_points.shape[0]
         visited = np.zeros(num_nodes+1,dtype=np.bool_)
         self.segs = []
@@ -143,22 +144,26 @@ class Wormer(object):
                 self.segs += [bingo]                        # Add the last bingo list
                 
         
+    
     def buildLevelForVTK(self,dz,invert_z = True):
         """Computes the VTK representation of worms for a single level."""
         # Organize the worm data so that the VTK writing stuff will swallow it...
-        max_valid_node = self.G.number_of_nodes()-1
-        all_points = [self.G.node[p]['geog_pos'] for p in range(max_valid_node)] # The last one is empty; in Geographic coords
+        G_dz = dz
+        max_valid_node = self.G[G_dz].number_of_nodes()-1
+        #max_valid_node = self.G[G_dz].number_of_nodes()
+        all_points = [self.G[G_dz].node[p]['geog_pos'] for p in range(max_valid_node)] # The last one is empty; in Geographic coords
 
         if invert_z:
             dz = -dz
+            
         all_points = [(e[0],e[1],dz*self.dx) for e in all_points] # Make sure we get East and North correct
-        if self.all_points == None:
+        if self.all_points.get(G_dz) == None:
             base_point_num = 0
-            self.all_points = all_points
+            self.all_points[G_dz] = all_points
         else:
-            base_point_num = len(self.all_points) 
-            self.all_points += all_points
-        all_vals = [self.G.node[p]['val'] for p in range(max_valid_node)] # The last one is empty
+            base_point_num = len(self.all_points[G_dz]) 
+            self.all_points[G_dz] += all_points
+        all_vals = [self.G[G_dz].node[p]['val'] for p in range(max_valid_node)] # The last one is empty
         all_lines = []
         for s in self.segs:
             if s == []:
@@ -176,15 +181,15 @@ class Wormer(object):
                 ln += [int(edge[1]+base_point_num)]
             all_lines += [ln]
             
-        if self.all_vals == None:
-            self.all_vals = all_vals
+        if self.all_vals.get(G_dz) == None:
+            self.all_vals[G_dz] = all_vals
         else:
-            self.all_vals += all_vals
+            self.all_vals[G_dz] += all_vals
             
-        if self.all_lines == None:
-            self.all_lines = all_lines
+        if self.all_lines.get(G_dz) == None:
+            self.all_lines[G_dz] = all_lines
         else:
-            self.all_lines += all_lines
+            self.all_lines[G_dz] += all_lines
 
 
     def buildPaddedRaster(self,padded_shape,rolloff_size = 100,pad_type='hann'):
