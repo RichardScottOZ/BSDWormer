@@ -103,7 +103,7 @@ class Wormer(object):
             worm_vals = clip_img[worm_points[:,0],worm_points[:,1]]
             gt = self.geomat
         else:
-            worm_points = np.argwhere(self.worm_image > nodata)
+            worm_points = np.argwhere(self.worm_image > nodata_in_worm_image)
             worm_vals = self.worm_image[worm_points[:,0],worm_points[:,1]]
             gt = self.padded_geotransform
         worm_vals *= dz
