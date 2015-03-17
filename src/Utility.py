@@ -40,10 +40,13 @@ def writeVtkImage(filename,image,origin,spacing):
     vtk.tofile(filename+"_image.vtk")
 
 def writeVtkWorms(filename,points,lines,vals):
-    vtk = PV.VtkData(PV.PolyData(points=points,
-                                 lines=lines),
+    points_list = [p for v in points.values() for p in v]
+    lines_list = [p for v in lines.values() for p in v]
+    vals_list = [p for v in vals.values() for p in v]
+    vtk = PV.VtkData(PV.PolyData(points=points_list,
+                                 lines=lines_list),
                      'Worm Segments',
-                     PV.PointData(PV.Scalars(np.fabs(vals),name='mutliscale edge magnitudes')),
+                     PV.PointData(PV.Scalars(np.fabs(vals_list),name='mutliscale edge magnitudes')),
                      'Edge Magnitudes'
                     )
     vtk.tofile(filename+"_worms.vtk")
