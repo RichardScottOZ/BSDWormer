@@ -53,6 +53,10 @@ class Wormer(object):
         self.setBaseGrid(np.array(gdalnumeric.LoadFile(self.gdal_input_filename)))
         self.ds = gdal.Open(self.gdal_input_filename,gdalconst.GA_ReadOnly) 
         self.geomat = self.ds.GetGeoTransform()
+        try:
+            self.no_data_value = self.ds.GetRasterBand(1).GetNoDataValue()
+        except:
+            self.no_data_value = None
         # FIXME: the following assumes North is up in the image
         self.dx = self.geomat[1]
         self.dy = self.geomat[5]
