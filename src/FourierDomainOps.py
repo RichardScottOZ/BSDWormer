@@ -301,7 +301,7 @@ class FourierDomainOps(object):
         normed_y.setSpatialGrid(np.choose(mask,[fdg_y.spatial_grid/mod,0.0]))
         return (normed_x,normed_y)
         
-    def CannyEdgeDetect(self,fdg):
+    def CannyEdgeDetect(self,fdg,nodata=-100.):
         """A 2D Canny edge detector using upward continuation
         as a blurring operation instead of a Gaussian (which would
         be appropriate for a Diffusion equation problem).
@@ -314,8 +314,9 @@ class FourierDomainOps(object):
         (grad_of_norm_x,grad_of_norm_y) = self.buildGradVector(norm_grad)
         inner_product = (grad_of_norm_x.spatial_grid*unit_x.spatial_grid +
                          grad_of_norm_y.spatial_grid*unit_y.spatial_grid)
-        #FIXME! Magic number of -100. here...
-        return np.where(self.simpleZeroCrossings(inner_product), norm_grad.spatial_grid.real , -100.)
+        #FIXME! Magic number of -100. for nodata here...
+        # MAYBE fixed???
+        return np.where(self.simpleZeroCrossings(inner_product), norm_grad.spatial_grid.real , nodata)
 #        return self.simpleZeroCrossings(inner_product)
 #         signs = np.array(inner_product >= 0., np.int)
 #         diffs_0 = np.diff(signs,axis=0)
