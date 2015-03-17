@@ -3,18 +3,20 @@ Created on Jan 23, 2015
 
 @author: frank
 '''
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, String, Float
+from sqlalchemy import Column, Integer, Float, ForeignKey
 from geoalchemy2 import Geometry
-from sqlalchemy.orm import sessionmaker
+from geoalchemy2.elements import WKTElement
+from sqlalchemy.orm import sessionmaker, relationship, backref
 from io import StringIO
 
-def ToWKT(foo,SRID=4326):
+
+def ToMLSZM_WKT(foo,height,SRID=4326):
     dummy = StringIO()
     dummy.write('SRID=%d; MULTILINESTRINGZM('%SRID)
     first_line = True
-    for l in foo.all_lines:
+    for l in foo.all_lines[height]:
         if first_line:
             first_line = False
         else:
@@ -23,7 +25,10 @@ def ToWKT(foo,SRID=4326):
         last_point_idx = len(l)-1
         for j,lp in enumerate(l):
             # No bloody comma on the end
-            dummy.write('%g %g %g %g'%(foo.all_points[lp][0], foo.all_points[lp][1], foo.all_points[lp][2], foo.all_vals[lp]))
+            dummy.write('%g %g %g %g'%(foo.all_points[height][lp][0], 
+                                       foo.all_points[height][lp][1], 
+                                       foo.all_points[height][lp][2], 
+                                       foo.all_vals[height][lp]))
             if j != last_point_idx:
                 dummy.write(',')
         dummy.write(')')
@@ -32,36 +37,142 @@ def ToWKT(foo,SRID=4326):
     dummy.close()
     return ret
 
+
 Base = declarative_base()
 
 class WormLayer(Base):
-    __tablename__ = 'worm_layer'
+    __tablename__ = 'test'
     id = Column(Integer, primary_key=True)
     height = Column(Float)
     geom = Column(Geometry('MULTILINESTRINGZM'))
+    
+class WormPoint(Base):
+    __tablename__ = 'test_points'
+    worm_point_id = Column(Integer, primary_key=True, index=True)
+    vtk_id = Column(Integer,index=True)
+    x = Column(Float)
+    y = Column(Float)
+    z = Column(Float)
+    grad = Column(Float)
+    height = Column(Float)
+    pt = Column(Geometry('POINTZM'),index=True)
+    level = relationship('WormLevel', secondary='test_levels_points')
+    
+class WormLevel(Base):
+    __tablename__ = 'test_levels'
+    worm_level_id = Column(Integer, primary_key=True)
+    level = Column(Float)
+    point = relationship('WormPoint', secondary='test_levels_points')
+    
+class WormLevelPoints(Base):
+    __tablename__ = 'test_levels_points'
+    worm_level_id = Column(Integer, ForeignKey('test_levels.worm_level_id'), primary_key=True)
+    point_id = Column(Integer, ForeignKey('test_points.worm_point_id'), primary_key=True)
+    worm_seg_id = Column(Integer,primary_key=True,index=True)
+    worm_level = relationship(WormLevel, backref=backref("worm_point_assoc"))
+    worm_point = relationship(WormPoint, backref=backref("worm_level_assoc"))
+    seg_sequence_num = Column(Integer)
+    line_segmt = Column(Geometry('LINESTRINGZM'),index=True)
+    line_grad = Column(Float)
+    
+
 
 
 class PostGISWriter(object):
     '''
-    Encapsulates the method for writing worms to XYZM points in PostGIS. 
+    Encapsulates the method for writing worms to XYZM points in PostGIS.
+    Also writes the x, y, z, and m values to a different table.
     '''
 
-    def __init__(self, db='frank', tablename='worm_layer', srid=4326):
+    def __init__(self, db='postgresql://frank@localhost/frank', srid=4326):
         '''
         Constructor
         '''
-        self.engine = create_engine('postgresql://frank@localhost/%s'%db, echo=False)
+        self.engine = create_engine('%s'%db, echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
         self.srid = srid
-        WormLayer.__tablename__ = tablename
-        WormLayer.__table__.create(self.engine)
+        if not self.engine.dialect.has_table(self.engine.connect(), "test"):
+            WormLayer.__table__.create(self.engine)
+        if not self.engine.dialect.has_table(self.engine.connect(), "test_points"):
+            WormPoint.__table__.create(self.engine)
+        if not self.engine.dialect.has_table(self.engine.connect(), "test_levels"):
+            WormLevel.__table__.create(self.engine)
+        if not self.engine.dialect.has_table(self.engine.connect(), "test_levels_points"):
+            WormLevelPoints.__table__.create(self.engine)
         
-    def addWormLayer(self,layer,height):
-        worm_layer = WormLayer(height,geom=ToWKT(layer,SRID=self.srid))
+        
+    def addWormLayer(self,layers,height):
+        worm_layer = WormLayer(height=height,
+                               geom=ToMLSZM_WKT(layers,height=height,SRID=self.srid))
         self.session.add(worm_layer)
         self.session.commit()
+
+    def addWormPoints(self,layers,height):
+        for l in layers.all_lines[height]:
+            for lp in l:
+                x = layers.all_points[height][lp][0]
+                y = layers.all_points[height][lp][1]
+                z = layers.all_points[height][lp][2]
+                grad = layers.all_vals[height][lp]
+                pt_wkt = 'POINTZM(%g %g %g %g)'%(x,y,z,grad)
+                worm_point = WormPoint(vtk_id=lp,
+                                       x=x,
+                                       y=y,
+                                       z=z,
+                                       grad=grad,
+                                       height=height,
+                                       pt=pt_wkt)
+                self.session.add(worm_point)
+        self.session.commit()
+
+    def addWormsAtHeightToDB(self,layers,height, srid=4326):
         
+        # Build the level record in the database
+        worm_level = WormLevel(level=height)
+        self.session.add(worm_level)
+        self.session.commit()
+        
+        # Load all of the points records into the database
+        points = {}
+        for pt_id,pt in enumerate(layers.all_points[height]):
+            x = pt[0]
+            y = pt[1]
+            z = pt[2]
+            grad = layers.all_vals[height][pt_id]
+            pt_wkt = 'POINTZM(%g %g %g %g)'%(x,y,z,grad)
+            worm_point = WormPoint(vtk_id=pt_id,
+                                   x=x,
+                                   y=y,
+                                   z=z,
+                                   grad=grad,
+                                   height=height,
+                                   pt=WKTElement(pt_wkt,srid=srid)
+                                   )
+            self.session.add(worm_point)
+            points[pt_id] = worm_point
+            
+        self.session.commit()
+
+
+        # And finally, load all of the association table records            
+        for seg_id,l in enumerate(layers.all_lines[height]):
+            start_pt = points[l[0]]
+            for seq_num,lp in enumerate(l):
+                end_pt = points[lp]
+                line_grad = (start_pt.grad + end_pt.grad)/2.0
+                wlp = WormLevelPoints(worm_level = worm_level,
+                                      worm_point = end_pt,
+                                      seg_sequence_num = seq_num,
+                                      worm_seg_id = seg_id,
+                                      #line_segmt = func.ST_SetSRID(func.ST_MakeLine(start_pt.pt,end_pt.pt),srid=srid),
+                                      line_segmt = func.ST_MakeLine(start_pt.pt,end_pt.pt),
+                                      line_grad = line_grad
+                                      )
+                self.session.add(wlp)
+                start_pt = end_pt
+            self.session.commit()
+
     def _rollbackBadDatabaseTransaction(self):
         self.session.rollback()
         
