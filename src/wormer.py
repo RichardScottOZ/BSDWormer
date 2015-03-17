@@ -93,13 +93,12 @@ class Wormer(object):
             n2 = neighbors[1][2]
             self.G[dz].add_edge(i,n2)
         
-    def buildWormSegs(self,nodata = -100, clipped=True, log_vals = True, dz=None):
+    def buildWormSegs(self,nodata_in_worm_image = -100, clipped=True, log_vals = True, dz=None):            
         if clipped:
             # The coords returned by np.argwhere are setting the start of 
-            # the clipping region to corrdinates (0,0)
+            # the clipping region to coordinates (0,0)
             # Deal with that by pulling vals from the clipped region...
-            clip_img = self.worm_image[self.padded_slice_y,self.padded_slice_x]
-            worm_points = np.argwhere(clip_img > nodata)
+            worm_points = np.argwhere(clip_img > nodata_in_worm_image )
             worm_vals = clip_img[worm_points[:,0],worm_points[:,1]]
             gt = self.geomat
         else:
