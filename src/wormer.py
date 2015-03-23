@@ -127,7 +127,10 @@ class Wormer(object):
                 bingo = []                                  # Start a new list to hold results; will be included as element in master list
                 last_node = nd                              # Initialize last_node
                 for (source,dest,d) in nx.dfs_labeled_edges(dfst,nd):
-                    # Run through the labeled edges of a Depth First Search 
+                    # Run through the labeled edges of a Depth First Search
+                    if visited[source] and visited[dest]:
+                        # We've already traversed this edge for some reason; bail out of further processing
+                        continue
                     if d['dir'] != 'forward':
                         # Backtracking or out-of-spanning-tree edge; not interested
                         continue
