@@ -3,11 +3,11 @@ Created on Jan 23, 2015
 
 @author: frank
 '''
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, ForeignKey
 from geoalchemy2 import Geometry
-from geoalchemy2.elements import WKTElement
+from geoalchemy2.elements import WKTElement, WKBElement
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from io import StringIO
 
@@ -37,6 +37,9 @@ def ToMLSZM_WKT(foo,height,SRID=4326):
     dummy.close()
     return ret
 
+def makeLine(pt1,pt2):
+    geom = func.ST_AsEWKB(func.ST_MakeLine(pt1,pt2))
+    return geom
 
 Base = declarative_base()
 
@@ -91,6 +94,7 @@ class PostGISWriter(object):
         self.engine = create_engine('%s'%db, echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
+        self.connect = self.engine.connect()
         self.srid = srid
         if not self.engine.dialect.has_table(self.engine.connect(), "test"):
             WormLayer.__table__.create(self.engine)
@@ -154,24 +158,37 @@ class PostGISWriter(object):
             
         self.session.commit()
 
-
-        # And finally, load all of the association table records            
+        # Grab the table object so that we can do simple inserts instead of through the 
+        # molasses-slow declarative_base route for inserts...
+        wlp_table = inspect(WormLevelPoints).mapped_table
+        
+        # And finally, load all of the association table records
+        r1 = self.connect.execute(wlp_table.select())
         for seg_id,l in enumerate(layers.all_lines[height]):
             start_pt = points[l[0]]
+            sp = layers.all_points[height][start_pt.vtk_id]
             for seq_num,lp in enumerate(l):
                 end_pt = points[lp]
+                ep = layers.all_points[height][end_pt.vtk_id]
                 line_grad = (start_pt.grad + end_pt.grad)/2.0
-                wlp = WormLevelPoints(worm_level = worm_level,
-                                      worm_point = end_pt,
-                                      seg_sequence_num = seq_num,
-                                      worm_seg_id = seg_id,
-                                      #line_segmt = func.ST_SetSRID(func.ST_MakeLine(start_pt.pt,end_pt.pt),srid=srid),
-                                      line_segmt = func.ST_MakeLine(start_pt.pt,end_pt.pt),
-                                      line_grad = line_grad
-                                      )
-                self.session.add(wlp)
+                sgmt_wkt = 'LINESTRINGZM(%g %g %g %g, %g %g %g %g)'%(sp[0],
+                                                                     sp[1],
+                                                                     sp[2],
+                                                                     start_pt.grad,
+                                                                     ep[0],
+                                                                     ep[1],
+                                                                     ep[2],
+                                                                     end_pt.grad)
+                self.connect.execute(wlp_table.insert(),
+                                     worm_level_id = worm_level.worm_level_id,
+                                     point_id = end_pt.worm_point_id,
+                                     seg_sequence_num = seq_num,
+                                     worm_seg_id = seg_id,
+                                     line_segmt = sgmt_wkt,
+                                     line_grad = line_grad
+                                     )
                 start_pt = end_pt
-            self.session.commit()
+                sp = ep
 
     def _rollbackBadDatabaseTransaction(self):
         self.session.rollback()
