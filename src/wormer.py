@@ -310,6 +310,45 @@ class Wormer(object):
                                       self.padded_grid,
                                       self.padded_geotransform,
                                       self.ds.GetProjection())
+        
+    def importExternallyPaddedRaster(self,gdal_filename):
+        """Import a GDAL raster of the externally padded image 
+           (e.g. by preprocessing with Oasis Montaj) into a numpy array stashed away as an attribute.
+        """
+        self.gdal_external_padded_filename = gdal_filename
+        self.padded_grid = np.array(gdalnumeric.LoadFile(self.gdal_external_padded_filename))
+        ep_ds = gdal.Open(self.gdal_external_padded_filename,gdalconst.GA_ReadOnly) 
+        ep_geomat = ep_ds.GetGeoTransform()
+        # FIXME: the following assumes North is up in the image
+        #ep_dx = ep_geomat[1]
+        #ep_dy = ep_geomat[5]
+        #ep_linemax,ep_pixmax = self.padded_grid.shape
+        internal_linemax,internal_pixmax = self.base_grid.shape
+        internal_corner_gcps = GeoTransformToGCPs(self.geomat,internal_pixmax,internal_linemax)
+        # FIXME: This is a terrapixel image (1 million by 1 million)
+        # that _should_ hold us for a while as an outer bound of what we can import into 
+        # any machine with "reasonable" memory.
+        # However, eventually something more general is desirable...
+        internal_pixmin = 1000000
+        internal_pixmax = -1000000
+        internal_linemin = 1000000
+        internal_linemax = -1000000
+        for gcp in internal_corner_gcps:
+            px,py = MapToPixel(gcp.GCPX,gcp.GCPY,ep_geomat)
+            internal_pixmin = min(internal_pixmin,px)
+            internal_pixmax = max(internal_pixmax,px)
+            internal_linemin = min(internal_linemin,py)
+            internal_linemax = max(internal_linemax,py)
+        #print(internal_pixmin,internal_pixmax,internal_linemin,internal_linemax)
+        self.padded_slice_x = slice(internal_pixmin,internal_pixmax,1)
+        self.padded_slice_y = slice(internal_linemin,internal_linemax,1)
+        #print(self.padded_slice_x,self.padded_slice_y)
+        self.padded_geotransform = ep_geomat
+        if self.no_data_value != None:
+            self.externally_sized_mask = np.ones(self.padded_grid.shape,np.float32)
+            self.externally_sized_mask[:,:] = self.no_data_value
+            self.externally_sized_mask[self.padded_slice_y,self.padded_slice_x] = self.base_grid
+        
 
         
         
