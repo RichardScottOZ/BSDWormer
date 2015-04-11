@@ -101,9 +101,13 @@ class Wormer(object):
             # The coords returned by np.argwhere are setting the start of 
             # the clipping region to coordinates (0,0)
             # Deal with that by pulling vals from the clipped region...
-            #clip_img = self.worm_image[self.padded_slice_y,self.padded_slice_x]
-            clip_img = np.where(self.externally_sized_mask > self.no_data_value,
-                                self.worm_image,self.no_data_value)[self.padded_slice_y,self.padded_slice_x]
+            try:
+                # This works if we called importExternallyPaddedRaster
+                clip_img = np.where(self.externally_sized_mask > self.no_data_value,
+                                    self.worm_image,self.no_data_value)[self.padded_slice_y,self.padded_slice_x]
+            except AttributeError:
+                # and this works if we pad ourselves...
+                clip_img = self.worm_image[self.padded_slice_y,self.padded_slice_x]
                 
             worm_points = np.argwhere(clip_img > nodata_in_worm_image )
             worm_vals = clip_img[worm_points[:,0],worm_points[:,1]]
