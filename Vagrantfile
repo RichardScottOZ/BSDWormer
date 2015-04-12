@@ -5,7 +5,8 @@ $provision_script = <<'EOF'
 echo "shell provisioning"
 sudo apt-get update
 sudo apt-get -y dist-upgrade
-sudo apt-get install -y virtualbox-guest-dkms python3-scipy ipython3-notebook python3-matplotlib git python3-pip python3-gdal gdal-bin python3-networkx atop python-sqlalchemy 
+sudo apt-get install -y virtualbox-guest-dkms python3-scipy ipython3-notebook python3-matplotlib git python3-pip python3-gdal gdal-bin python3-networkx atop python-sqlalchemy postgresql-9.3-postgis-2.1
+sudo -u postgres createuser vagrant
 pip3 install future
 pip3 install git+https://fghorow@bitbucket.org/fghorow/pyvtk-py3-port.git
 EOF
