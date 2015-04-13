@@ -87,7 +87,7 @@ class PostGISWriter(object):
     Also writes the x, y, z, and m values to a different table.
     '''
 
-    def __init__(self, db='postgresql://vagrant@localhost/vagrant', srid=4326):
+    def __init__(self, db='postgresql:///vagrant', srid=4326):
         '''
         Constructor
         '''
