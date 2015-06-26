@@ -203,6 +203,13 @@ class FourierDomainOps(object):
         """
         self.F_up = np.exp(-2.*np.pi*delta_z*self.modk)
         
+    # FIXME: (maybe)
+    # There's a paper by Steven Johnson (one of the authors of FFTW, now in MIT Applied Math) showing a better
+    # way to estimate derivatives in the Fourier Domain.
+    # I should re-read that paper, and see if implementing some of those ideas
+    # works well here instead of central differences...
+    # A link to the paper is http://math.mit.edu/~stevenj/fft-deriv.pdf
+        
     def buildDxOp(self):
         """The analytic expression for a derivative is available in closed form in the 
         Fourier Domain. Unfortunately, it exponentially amplifies the shortest 
@@ -339,7 +346,8 @@ class FourierDomainOps(object):
         fct_px = np.roll(fct,+1,axis=1)
         fct_py = np.roll(fct,+1,axis=0)
         fct_pxpy = np.roll(np.roll(fct,+1,axis=0),+1,axis=1)
-        # See the ipython notebook for the logic behind this algorithm.
+        fct_pxmy = np.roll(np.roll(fct,-1,axis=0),+1,axis=1)
+        # See the ipython notebook zeroCrossingTester.ipynb for the logic behind this algorithm.
         np.seterr(divide='ignore') # temporarily turn off zerodivide warnings
         s_px = fct / (fct - fct_px)
         zc_px = (0. <= s_px) & (s_px <= 1.0)
@@ -347,8 +355,45 @@ class FourierDomainOps(object):
         zc_py = (0. <= s_py) & (s_py <= 1.0)
         s_pxpy = fct / (fct - fct_pxpy)
         zc_pxpy = (0. <= s_pxpy) & (s_pxpy <= 1.0)
+        s_pxmy = fct / (fct - fct_pxmy)
+        zc_pxmy = (0. <= s_pxmy) & (s_pxmy <= 1.0)
         np.seterr(divide='warn') # turn back on zerodivide warnings
-        return (zc_px | zc_py | zc_pxpy)
+        return (zc_px | zc_py | zc_pxpy | zc_pxmy)
+    
+    def zeroCrossingsOnPixelEdge(self,fct):
+        """Takes a grid, and returns the coordinates of 
+           zero crossings along the y_min (x direction) and
+           x_min (y direction) edges of the pixels.
+           
+           As in simpleZeroCrossings, the math of the fractional coordinates is
+           worked out in zeroCrossingTester.ipynb...
+           This is intended to be used for 'super-resolved' (i.e. sub-pixel)
+           coordinates for points on worms. We hopefully can avoid the
+           'stairstepping' (i.e. rasterized) worms from the other algorithm. 
+           """
+        fct_px = np.roll(fct,+1,axis=1)
+        fct_py = np.roll(fct,+1,axis=0)
+        idxs = np.indices(fct.shape)
+        
+        np.seterr(divide='ignore') # temporarily turn off zerodivide warnings
+        # This computes the 's' parameter along the x edge of a pixel
+        s_px = fct / (fct - fct_px)
+        # This decides where we have a valid zero crossing
+        zc_px = (0. <= s_px) & (s_px <= 1.0)
+        # This adds the pixel index to the fractional x coordinate,
+        # and restricts to the valid locations
+        x_fractional_x = (s_px + idxs[1])[zc_px]
+        # This simply pulls the y index from the valid locations,
+        # hopefully in sync with the x coordinates
+        y_fractional_x = (idxs[0])[zc_px]
+        # Now we repeat that whole process for the y edges
+        s_py = fct / (fct - fct_py)
+        zc_py = (0. <= s_py) & (s_py <= 1.0)
+        y_fractional_y = (s_py + idxs[0])[zc_py]
+        x_fractional_y = (idxs[1])[zc_py]
+                
+        np.seterr(divide='warn') # turn back on zerodivide warnings
+        return np.append(y_fractional_x,y_fractional_y),np.append(x_fractional_x,x_fractional_y)
 
 if __name__ == '__main__':
     import doctest
