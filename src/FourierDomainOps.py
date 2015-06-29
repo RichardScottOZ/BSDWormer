@@ -343,10 +343,10 @@ class FourierDomainOps(object):
         return (pxc | mxc | pyc | myc)
 
     def simpleZeroCrossings(self,fct):
-        fct_px = np.roll(fct,+1,axis=1)
-        fct_py = np.roll(fct,+1,axis=0)
-        fct_pxpy = np.roll(np.roll(fct,+1,axis=0),+1,axis=1)
-        fct_pxmy = np.roll(np.roll(fct,-1,axis=0),+1,axis=1)
+        fct_px = np.roll(fct,-1,axis=1)
+        fct_py = np.roll(fct,-1,axis=0)
+        fct_pxpy = np.roll(np.roll(fct,-1,axis=0),-1,axis=1)
+        fct_pxmy = np.roll(np.roll(fct,+1,axis=0),-1,axis=1)
         # See the ipython notebook zeroCrossingTester.ipynb for the logic behind this algorithm.
         np.seterr(divide='ignore') # temporarily turn off zerodivide warnings
         s_px = fct / (fct - fct_px)
@@ -360,19 +360,20 @@ class FourierDomainOps(object):
         np.seterr(divide='warn') # turn back on zerodivide warnings
         return (zc_px | zc_py | zc_pxpy | zc_pxmy)
     
-    def zeroCrossingsOnPixelEdge(self,fct):
+    def zeroCrossingsOnPixelEdge(self,fct,val_img=None):
         """Takes a grid, and returns the coordinates of 
            zero crossings along the y_min (x direction) and
            x_min (y direction) edges of the pixels.
+           If val_img is provided, also returns the values at the zero crossings.
            
            As in simpleZeroCrossings, the math of the fractional coordinates is
            worked out in zeroCrossingTester.ipynb...
            This is intended to be used for 'super-resolved' (i.e. sub-pixel)
            coordinates for points on worms. We hopefully can avoid the
            'stairstepping' (i.e. rasterized) worms from the other algorithm. 
-           """
-        fct_px = np.roll(fct,+1,axis=1)
-        fct_py = np.roll(fct,+1,axis=0)
+        """
+        fct_px = np.roll(fct,-1,axis=1)
+        fct_py = np.roll(fct,-1,axis=0)
         idxs = np.indices(fct.shape)
         
         np.seterr(divide='ignore') # temporarily turn off zerodivide warnings
@@ -383,17 +384,35 @@ class FourierDomainOps(object):
         # This adds the pixel index to the fractional x coordinate,
         # and restricts to the valid locations
         x_fractional_x = (s_px + idxs[1])[zc_px]
-        # This simply pulls the y index from the valid locations,
-        # hopefully in sync with the x coordinates
+        # This simply pulls the y index from the valid locations.
         y_fractional_x = (idxs[0])[zc_px]
+        if val_img != None:
+            # And grab the associated 'value' from val_img.
+            # N.B. we are grabbing the pixel value only, not anything
+            # fancy like the average value of the two pixels sharing the edge. 
+            # Maybe thats a FIXME?
+            val_fractional_x = val_img[zc_px]
         # Now we repeat that whole process for the y edges
         s_py = fct / (fct - fct_py)
         zc_py = (0. <= s_py) & (s_py <= 1.0)
         y_fractional_y = (s_py + idxs[0])[zc_py]
         x_fractional_y = (idxs[1])[zc_py]
-                
+        if val_img != None:
+            val_fractional_y = val_img[zc_py]
         np.seterr(divide='warn') # turn back on zerodivide warnings
-        return np.append(y_fractional_x,y_fractional_y),np.append(x_fractional_x,x_fractional_y)
+        y_coords = np.append(y_fractional_x,y_fractional_y)
+        x_coords = np.append(x_fractional_x,x_fractional_y)
+        #y_coords = y_fractional_x
+        #x_coords = x_fractional_x
+        #y_coords = y_fractional_y
+        #x_coords = x_fractional_y
+        if val_img == None:
+            return y_coords, x_coords
+        else:
+            vals = np.append(val_fractional_x,val_fractional_y)
+            #vals = val_fractional_x
+            #vals = val_fractional_y
+            return y_coords, x_coords, vals
 
 if __name__ == '__main__':
     import doctest
