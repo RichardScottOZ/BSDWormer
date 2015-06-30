@@ -308,7 +308,7 @@ class FourierDomainOps(object):
         normed_y.setSpatialGrid(np.choose(mask,[fdg_y.spatial_grid/mod,0.0]))
         return (normed_x,normed_y)
         
-    def CannyEdgeDetect(self,fdg,nodata=-100.):
+    def CannyEdgeDetect(self,fdg,nodata=-100.,return_image = True):
         """A 2D Canny edge detector using upward continuation
         as a blurring operation instead of a Gaussian (which would
         be appropriate for a Diffusion equation problem).
@@ -323,7 +323,10 @@ class FourierDomainOps(object):
                          grad_of_norm_y.spatial_grid*unit_y.spatial_grid)
         #FIXME! Magic number of -100. for nodata here...
         # MAYBE fixed???
-        return np.where(self.simpleZeroCrossings(inner_product), norm_grad.spatial_grid.real , nodata)
+        if return_image:
+            return np.where(self.simpleZeroCrossings(inner_product), norm_grad.spatial_grid.real , nodata)
+        else:
+            return self.zeroCrossingsOnPixelEdge(inner_product.real, norm_grad.spatial_grid.real)
 #        return self.simpleZeroCrossings(inner_product)
 #         signs = np.array(inner_product >= 0., np.int)
 #         diffs_0 = np.diff(signs,axis=0)
@@ -372,6 +375,7 @@ class FourierDomainOps(object):
            coordinates for points on worms. We hopefully can avoid the
            'stairstepping' (i.e. rasterized) worms from the other algorithm. 
         """
+        #import pdb; pdb.set_trace()
         fct_px = np.roll(fct,-1,axis=1)
         fct_py = np.roll(fct,-1,axis=0)
         idxs = np.indices(fct.shape)
@@ -402,16 +406,11 @@ class FourierDomainOps(object):
         np.seterr(divide='warn') # turn back on zerodivide warnings
         y_coords = np.append(y_fractional_x,y_fractional_y)
         x_coords = np.append(x_fractional_x,x_fractional_y)
-        #y_coords = y_fractional_x
-        #x_coords = x_fractional_x
-        #y_coords = y_fractional_y
-        #x_coords = x_fractional_y
+
         if val_img == None:
             return y_coords, x_coords
         else:
             vals = np.append(val_fractional_x,val_fractional_y)
-            #vals = val_fractional_x
-            #vals = val_fractional_y
             return y_coords, x_coords, vals
 
 if __name__ == '__main__':

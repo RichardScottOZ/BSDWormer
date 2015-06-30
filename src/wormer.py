@@ -2,12 +2,8 @@ import numpy as np
 from osgeo import gdalnumeric
 from osgeo import gdal
 from osgeo import gdalconst
-#from matplotlib import pyplot as plt
-#import os.path
 import FourierDomainGrid as GRID
 import FourierDomainOps as FDO
-#from Utility import isclose, viewRaster
-#from scipy.ndimage.measurements import label
 from scipy import spatial
 import networkx as nx
 from Utility import writeVtkWorms, writeGDALRasterFromNumpyArray
@@ -66,8 +62,8 @@ class Wormer(object):
         """
         gdalnumeric.SaveArray( narray, gdal_filename, format = fmt, prototype = self.ds )
         
-    def wormLevelAsImage(self,dz):
-        # import pdb; pdb.set_trace()
+
+    def wormLevel(self, dz):
         fdg = GRID.FourierDomainGrid(dx=self.dx, dy=self.dy)
         fdg.setSpatialGrid(self.padded_grid)
         fdg.setHatGrid(fdg.simpleFFT(fdg.spatial_grid.astype(np.complex)))
@@ -78,9 +74,17 @@ class Wormer(object):
         fdo.buildUpwardContinuationOp(dz)
         up_fdg.setHatGrid(fdg.hat_grid * fdo.F_up)
         up_fdg.setSpatialGrid(up_fdg.simpleIFFT(up_fdg.hat_grid))
-        self.worm_image = fdo.CannyEdgeDetect(up_fdg)
+        return fdo,up_fdg
+
+    def wormLevelAsImage(self,dz):
+        fdo,up_fdg = self.wormLevel(dz)
+        self.worm_image = fdo.CannyEdgeDetect(up_fdg,return_image=True)
         return self.worm_image
     
+    def wormLevelAsPoints(self,dz):
+        fdo,up_fdg = self.wormLevel(dz)
+        self.worm_ys,self.worm_xs,self.worm_vals = fdo.CannyEdgeDetect(up_fdg,return_image=False)
+
     def buildGraph(self,seg,vals,geotransform,dz):
         self.G[dz] = nx.Graph()
         tree = spatial.KDTree(seg)
@@ -96,32 +100,65 @@ class Wormer(object):
         # <http://networkx.lanl.gov/reference/generated/networkx.generators.degree_seq.configuration_model.html>
         self.G[dz] = nx.Graph(self.G[dz])
         
-    def buildWormSegs(self,nodata_in_worm_image = -100, clipped=True, log_vals = True, dz=None):            
+    def buildWormSegs(self,nodata_in_worm_image = -100, clipped=True, log_vals = True, dz=None, from_image = True):   
         if clipped:
-            # The coords returned by np.argwhere are setting the start of 
-            # the clipping region to coordinates (0,0)
-            # Deal with that by pulling vals from the clipped region...
-            try:
-                # This works if we called importExternallyPaddedRaster
-                clip_img = np.where(self.externally_sized_mask > self.no_data_value,
-                                    self.worm_image,self.no_data_value)[self.padded_slice_y,self.padded_slice_x]
-            except AttributeError:
-                # and this works if we pad ourselves...
-                clip_img = self.worm_image[self.padded_slice_y,self.padded_slice_x]
+            if not from_image:
+                # self.worm_points[0] contains the (fractional pixel) y coordinates
+                # while self.worm_points[1] contains the x coords.
+                # truncate them down to integers, so we can test against the clipping value
+                trunc_ys = np.trunc(self.worm_ys).astype(np.integer)
+                trunc_xs = np.trunc(self.worm_xs).astype(np.integer)
                 
-            worm_points = np.argwhere(clip_img > nodata_in_worm_image )
-            worm_vals = clip_img[worm_points[:,0],worm_points[:,1]]
-            gt = self.geomat
+                # Now compare those indices with the clipped image to see if we need that value...
+                try:
+                    # This works if we called importExternallyPaddedRaster
+                    clip_mask = (self.externally_sized_mask > self.no_data_value)
+                except AttributeError:
+                    # and this works if we pad ourselves...
+                    clip_mask = np.zeros(self.padded_grid.shape)
+                    clip_mask[self.padded_slice_y,self.padded_slice_x] = 1
+                # The following returns a sequence of (y,x) indices from the 
+                # worm point picks where the mask says we have valid data
+                clipped_idxs = (clip_mask[(trunc_ys,trunc_xs)] == True)
+                # These are the super-resolved valid worm picks
+                clipped_ys = self.worm_ys[clipped_idxs]
+                clipped_xs = self.worm_xs[clipped_idxs]
+                worm_points = np.transpose(np.array([clipped_ys,clipped_xs]))
+                # And these are their associated values
+                worm_vals = self.worm_vals[clipped_idxs]
+                gt = self.geomat
+            else:
+                # The coords returned by np.argwhere are setting the start of 
+                # the clipping region to coordinates (0,0)
+                # Deal with that by pulling vals from the clipped region...
+                try:
+                    # This works if we called importExternallyPaddedRaster
+                    clip_img = np.where(self.externally_sized_mask > self.no_data_value,
+                                        self.worm_image,self.no_data_value)[self.padded_slice_y,self.padded_slice_x]
+                except AttributeError:
+                    # and this works if we pad ourselves...
+                    clip_img = self.worm_image[self.padded_slice_y,self.padded_slice_x]
+                     
+                worm_points = np.argwhere(clip_img > nodata_in_worm_image )
+                worm_vals = clip_img[worm_points[:,0],worm_points[:,1]]
+                gt = self.geomat
         else:
-            worm_points = np.argwhere(self.worm_image > nodata_in_worm_image)
-            worm_vals = self.worm_image[worm_points[:,0],worm_points[:,1]]
-            gt = self.padded_geotransform
+            if not from_image:
+                #FIXME: Code this up...
+                raise(ValueError)
+            else:
+                worm_points = np.argwhere(self.worm_image > nodata_in_worm_image)
+                worm_vals = self.worm_image[worm_points[:,0],worm_points[:,1]]
+                gt = self.padded_geotransform
         worm_vals *= dz
         if log_vals:
             worm_vals = np.log10(worm_vals)
         self.buildGraph(worm_points,worm_vals,gt,dz)
         mst = nx.minimum_spanning_tree(self.G[dz])
-        num_nodes = worm_points.shape[0]
+        try:
+            num_nodes = worm_points.shape[0]
+        except AttributeError:
+            num_nodes = len(clipped_ys)
         visited = np.zeros(num_nodes+1,dtype=np.bool_)
         self.segs = []
         for nd in range(num_nodes):                       # Loop over all nodes
