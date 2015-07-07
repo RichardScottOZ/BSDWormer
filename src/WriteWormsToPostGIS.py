@@ -10,6 +10,7 @@ from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement, WKBElement
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from io import StringIO
+from math import atan2, pi
 
 
 def ToMLSZM_WKT(foo,height,SRID=4326):
@@ -77,6 +78,10 @@ class WormLevelPoints(Base):
     seg_sequence_num = Column(Integer)
     line_segmt = Column(Geometry('LINESTRINGZM'),index=True)
     line_grad = Column(Float)
+    azimuth = Column(Float)
+    start_point_id = Column(Integer)
+    wgs84_line_segmt = Column(Geometry('LINESTRINGZM'),index=True)
+
     
 
 
@@ -171,6 +176,15 @@ class PostGISWriter(object):
                 end_pt = points[lp]
                 ep = layers.all_points[height][end_pt.vtk_id]
                 line_grad = (start_pt.grad + end_pt.grad)/2.0
+                # FIXME (Maybe). This assumes that all coords are in a UTM or
+                # otherwise Cartesian coordinate system. This should be true
+                # for the worms, but BEWARE if you happen to be
+                # performing your worm job with geographic coordinates.
+                # We are calculating the azimuth (East from North)
+                # from the start point to the end point.
+                dEastings = ep[0] - sp[0]
+                dNorthings = ep[1] - sp[1]
+                azimuth = atan2(dEastings,dNorthings)*360./(2.*pi)
                 sgmt_wkt = 'LINESTRINGZM(%g %g %g %g, %g %g %g %g)'%(sp[0],
                                                                      sp[1],
                                                                      sp[2],
@@ -184,8 +198,10 @@ class PostGISWriter(object):
                                      point_id = end_pt.worm_point_id,
                                      seg_sequence_num = seq_num,
                                      worm_seg_id = seg_id,
-                                     line_segmt = sgmt_wkt,
-                                     line_grad = line_grad
+                                     line_segmt = WKTElement(sgmt_wkt,srid=srid),
+                                     line_grad = line_grad,
+                                     azimuth = azimuth,
+                                     start_point_id = start_pt.worm_point_id
                                      )
                 start_pt = end_pt
                 sp = ep
