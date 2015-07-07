@@ -173,6 +173,12 @@ class PostGISWriter(object):
             start_pt = points[l[0]]
             sp = layers.all_points[height][start_pt.vtk_id]
             for seq_num,lp in enumerate(l):
+                # seq_num == 0 is a special case
+                # sp is always equal to ep, due to a vagary of
+                # the network/graph constructing algorithm.
+                # Let's just not even bother putting them into the database
+                if seq_num == 0:
+                    continue
                 end_pt = points[lp]
                 ep = layers.all_points[height][end_pt.vtk_id]
                 line_grad = (start_pt.grad + end_pt.grad)/2.0
