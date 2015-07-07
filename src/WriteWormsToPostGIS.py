@@ -44,13 +44,13 @@ def makeLine(pt1,pt2):
 Base = declarative_base()
 
 class WormLayer(Base):
-    __tablename__ = 'test_Surat'
+    __tablename__ = 'AppBasinBGA2500'
     id = Column(Integer, primary_key=True)
     height = Column(Float)
     geom = Column(Geometry('MULTILINESTRINGZM'))
     
 class WormPoint(Base):
-    __tablename__ = 'test_Surat_points'
+    __tablename__ = 'AppBasinBGA2500_points'
     worm_point_id = Column(Integer, primary_key=True, index=True)
     vtk_id = Column(Integer,index=True)
     x = Column(Float)
@@ -59,18 +59,18 @@ class WormPoint(Base):
     grad = Column(Float)
     height = Column(Float)
     pt = Column(Geometry('POINTZM'),index=True)
-    level = relationship('WormLevel', secondary='test_Surat_levels_points')
+    level = relationship('WormLevel', secondary='AppBasinBGA2500_levels_points')
     
 class WormLevel(Base):
-    __tablename__ = 'test_Surat_levels'
+    __tablename__ = 'AppBasinBGA2500_levels'
     worm_level_id = Column(Integer, primary_key=True)
     level = Column(Float)
-    point = relationship('WormPoint', secondary='test_Surat_levels_points')
+    point = relationship('WormPoint', secondary='AppBasinBGA2500_levels_points')
     
 class WormLevelPoints(Base):
-    __tablename__ = 'test_Surat_levels_points'
-    worm_level_id = Column(Integer, ForeignKey('test_Surat_levels.worm_level_id'), primary_key=True)
-    point_id = Column(Integer, ForeignKey('test_Surat_points.worm_point_id'), primary_key=True)
+    __tablename__ = 'AppBasinBGA2500_levels_points'
+    worm_level_id = Column(Integer, ForeignKey('AppBasinBGA2500_levels.worm_level_id'), primary_key=True)
+    point_id = Column(Integer, ForeignKey('AppBasinBGA2500_points.worm_point_id'), primary_key=True)
     worm_seg_id = Column(Integer,primary_key=True,index=True)
     worm_level = relationship(WormLevel, backref=backref("worm_point_assoc"))
     worm_point = relationship(WormPoint, backref=backref("worm_level_assoc"))
@@ -87,7 +87,7 @@ class PostGISWriter(object):
     Also writes the x, y, z, and m values to a different table.
     '''
 
-    def __init__(self, db='postgresql:///vagrant', srid=4326):
+    def __init__(self, db='postgresql://frank@localhost/frank', srid=4326):
         '''
         Constructor
         '''
@@ -96,13 +96,13 @@ class PostGISWriter(object):
         self.session = Session()
         self.connect = self.engine.connect()
         self.srid = srid
-        if not self.engine.dialect.has_table(self.engine.connect(), "test_Surat"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinBGA2500"):
             WormLayer.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "test_Surat_points"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinBGA2500_points"):
             WormPoint.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "test_Surat_levels"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinBGA2500_levels"):
             WormLevel.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "test_Surat_levels_points"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinBGA2500_levels_points"):
             WormLevelPoints.__table__.create(self.engine)
         
         
