@@ -9,6 +9,7 @@ from sqlalchemy import Column, Integer, Float, ForeignKey
 from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement, WKBElement
 from sqlalchemy.orm import sessionmaker, relationship, backref
+from sqlalchemy.sql import text
 from io import StringIO
 from math import atan2, pi
 
@@ -60,6 +61,7 @@ class WormPoint(Base):
     grad = Column(Float)
     height = Column(Float)
     pt = Column(Geometry('POINTZM'),index=True)
+    wgs84_pt = Column(Geometry('POINTZM'),index=True)
     level = relationship('WormLevel', secondary='AppBasinBGA2500_levels_points')
     
 class WormLevel(Base):
@@ -150,13 +152,16 @@ class PostGISWriter(object):
             z = pt[2]
             grad = layers.all_vals[height][pt_id]
             pt_wkt = 'POINTZM(%g %g %g %g)'%(x,y,z,grad)
+            pt_ewkt = WKTElement(pt_wkt,srid=srid)
+            wgs84_pt = func.ST_Transform(pt_ewkt,4326)
             worm_point = WormPoint(vtk_id=pt_id,
                                    x=x,
                                    y=y,
                                    z=z,
                                    grad=grad,
                                    height=height,
-                                   pt=WKTElement(pt_wkt,srid=srid)
+                                   pt=pt_ewkt,
+                                   wgs84_pt = wgs84_pt
                                    )
             self.session.add(worm_point)
             points[pt_id] = worm_point
@@ -199,18 +204,26 @@ class PostGISWriter(object):
                                                                      ep[1],
                                                                      ep[2],
                                                                      end_pt.grad)
+                sgmt_ewkt = WKTElement(sgmt_wkt,srid=srid)
+                #wgs84_sgmt = func.ST_Transform(sgmt_ewkt,4326)
                 self.connect.execute(wlp_table.insert(),
                                      worm_level_id = worm_level.worm_level_id,
                                      point_id = end_pt.worm_point_id,
                                      seg_sequence_num = seq_num,
                                      worm_seg_id = seg_id,
-                                     line_segmt = WKTElement(sgmt_wkt,srid=srid),
+                                     line_segmt = sgmt_ewkt,
                                      line_grad = line_grad,
                                      azimuth = azimuth,
                                      start_point_id = start_pt.worm_point_id
                                      )
                 start_pt = end_pt
                 sp = ep
+                
+                
+    def cleanUpDatabase(self):
+        stmt = 'UPDATE "AppBasinBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'
+        self.connect.execute(text(stmt)) 
+        
 
     def _rollbackBadDatabaseTransaction(self):
         self.session.rollback()
