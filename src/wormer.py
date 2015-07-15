@@ -126,7 +126,7 @@ class Wormer(object):
                 worm_points = np.transpose(np.array([clipped_ys,clipped_xs]))
                 # And these are their associated values
                 worm_vals = self.worm_vals[clipped_idxs]
-                gt = self.geomat
+                gt = self.padded_geotransform
             else:
                 # The coords returned by np.argwhere are setting the start of 
                 # the clipping region to coordinates (0,0)
