@@ -173,7 +173,8 @@ class PostGISWriter(object):
         wlp_table = inspect(WormLevelPoints).mapped_table
         
         # And finally, load all of the association table records
-        r1 = self.connect.execute(wlp_table.select())
+        connect = self.session.connection()
+        r1 = connect.execute(wlp_table.select())
         for seg_id,l in enumerate(layers.all_lines[height]):
             start_pt = points[l[0]]
             sp = layers.all_points[height][start_pt.vtk_id]
@@ -205,28 +206,32 @@ class PostGISWriter(object):
                                                                      ep[2],
                                                                      end_pt.grad)
                 sgmt_ewkt = WKTElement(sgmt_wkt,srid=srid)
-                #wgs84_sgmt = func.ST_Transform(sgmt_ewkt,4326)
-                self.connect.execute(wlp_table.insert(),
-                                     worm_level_id = worm_level.worm_level_id,
-                                     point_id = end_pt.worm_point_id,
-                                     seg_sequence_num = seq_num,
-                                     worm_seg_id = seg_id,
-                                     line_segmt = sgmt_ewkt,
-                                     line_grad = line_grad,
-                                     azimuth = azimuth,
-                                     start_point_id = start_pt.worm_point_id
-                                     )
+                wgs84_sgmt = func.ST_Transform(sgmt_ewkt,4326)
+                connect.execute(wlp_table.insert(),
+                                worm_level_id = worm_level.worm_level_id,
+                                point_id = end_pt.worm_point_id,
+                                seg_sequence_num = seq_num,
+                                worm_seg_id = seg_id,
+                                line_segmt = sgmt_ewkt,
+                                line_grad = line_grad,
+                                azimuth = azimuth,
+                                wgs84_line_sgmt = wgs84_sgmt,
+                                start_point_id = start_pt.worm_point_id
+                                )
                 start_pt = end_pt
                 sp = ep
-                
+        
+        self.session.commit()
+        
                 
     def cleanUpDatabase(self):
-        stmt = "SELECT UpdateGeometrySRID('AppBasinMergedBGA2500_levels_points','wgs84_line_segmt',4326);"
-        #stmt = 'UPDATE "AppBasinMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'
-        self.connect.execute(text(stmt)) 
-        #stmt = 'UPDATE "AppBasinMergedBGA2500_points" SET wgs84_pt = ST_Transform(pt,4326);'
-        stmt = "SELECT UpdateGeometrySRID('AppBasinMergedBGA2500_points','wgs84_pt',4326);"
-        self.connect.execute(text(stmt)) 
+        connect = self.session.connection()
+        stmt = 'UPDATE "AppBasinMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'
+        connect.execute(text(stmt))
+        #stmt = "SELECT UpdateGeometrySRID('AppBasinMergedBGA2500_levels_points','wgs84_line_segmt',4326);"
+        #connect.execute(text(stmt))
+        self.session.commit()
+        self.session.close()
         
 
     def _rollbackBadDatabaseTransaction(self):
