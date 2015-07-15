@@ -221,8 +221,11 @@ class PostGISWriter(object):
                 
                 
     def cleanUpDatabase(self):
-        stmt = 'UPDATE "AppBasinMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'
-        stmt = 'UPDATE "AppBasinMergedBGA2500_points" SET wgs84_pt = ST_Transform(pt,4326);'
+        stmt = "SELECT UpdateGeometrySRID('AppBasinMergedBGA2500_levels_points','wgs84_line_segmt',4326);"
+        #stmt = 'UPDATE "AppBasinMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'
+        self.connect.execute(text(stmt)) 
+        #stmt = 'UPDATE "AppBasinMergedBGA2500_points" SET wgs84_pt = ST_Transform(pt,4326);'
+        stmt = "SELECT UpdateGeometrySRID('AppBasinMergedBGA2500_points','wgs84_pt',4326);"
         self.connect.execute(text(stmt)) 
         
 
