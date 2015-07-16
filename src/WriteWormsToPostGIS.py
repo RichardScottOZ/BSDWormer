@@ -206,7 +206,7 @@ class PostGISWriter(object):
                                                                      ep[2],
                                                                      end_pt.grad)
                 sgmt_ewkt = WKTElement(sgmt_wkt,srid=srid)
-                wgs84_sgmt = func.ST_Transform(sgmt_ewkt,4326)
+                #wgs84_sgmt = func.ST_Transform(sgmt_ewkt,4326)
                 connect.execute(wlp_table.insert(),
                                 worm_level_id = worm_level.worm_level_id,
                                 point_id = end_pt.worm_point_id,
@@ -215,7 +215,6 @@ class PostGISWriter(object):
                                 line_segmt = sgmt_ewkt,
                                 line_grad = line_grad,
                                 azimuth = azimuth,
-                                wgs84_line_sgmt = wgs84_sgmt,
                                 start_point_id = start_pt.worm_point_id
                                 )
                 start_pt = end_pt
