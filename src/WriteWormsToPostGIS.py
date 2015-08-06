@@ -46,13 +46,13 @@ def makeLine(pt1,pt2):
 Base = declarative_base()
 
 class WormLayer(Base):
-    __tablename__ = "AppBasinMergedBGA2500"
+    __tablename__ = "ADKMergedBGA2500"
     id = Column(Integer, primary_key=True)
     height = Column(Float)
     geom = Column(Geometry('MULTILINESTRINGZM'))
     
 class WormPoint(Base):
-    __tablename__ = 'AppBasinMergedBGA2500_points'
+    __tablename__ = 'ADKMergedBGA2500_points'
     worm_point_id = Column(Integer, primary_key=True, index=True)
     vtk_id = Column(Integer,index=True)
     x = Column(Float)
@@ -62,18 +62,18 @@ class WormPoint(Base):
     height = Column(Float)
     pt = Column(Geometry('POINTZM'),index=True)
     wgs84_pt = Column(Geometry('POINTZM'),index=True)
-    level = relationship('WormLevel', secondary='AppBasinMergedBGA2500_levels_points')
+    level = relationship('WormLevel', secondary='ADKMergedBGA2500_levels_points')
     
 class WormLevel(Base):
-    __tablename__ = 'AppBasinMergedBGA2500_levels'
+    __tablename__ = 'ADKMergedBGA2500_levels'
     worm_level_id = Column(Integer, primary_key=True)
     level = Column(Float)
-    point = relationship('WormPoint', secondary='AppBasinMergedBGA2500_levels_points')
+    point = relationship('WormPoint', secondary='ADKMergedBGA2500_levels_points')
     
 class WormLevelPoints(Base):
-    __tablename__ = 'AppBasinMergedBGA2500_levels_points'
-    worm_level_id = Column(Integer, ForeignKey('AppBasinMergedBGA2500_levels.worm_level_id'), primary_key=True)
-    point_id = Column(Integer, ForeignKey('AppBasinMergedBGA2500_points.worm_point_id'), primary_key=True)
+    __tablename__ = 'ADKMergedBGA2500_levels_points'
+    worm_level_id = Column(Integer, ForeignKey('ADKMergedBGA2500_levels.worm_level_id'), primary_key=True)
+    point_id = Column(Integer, ForeignKey('ADKMergedBGA2500_points.worm_point_id'), primary_key=True)
     worm_seg_id = Column(Integer,primary_key=True,index=True)
     worm_level = relationship(WormLevel, backref=backref("worm_point_assoc"))
     worm_point = relationship(WormPoint, backref=backref("worm_level_assoc"))
@@ -94,7 +94,7 @@ class PostGISWriter(object):
     Also writes the x, y, z, and m values to a different table.
     """
 
-    def __init__(self, db='postgresql://frank:f00bar@localhost:5433/frank', srid=4326):
+    def __init__(self, db="postgresql://frank:f00bar@localhost:5433/frank", srid=4326):
         """
         Constructor
         """
@@ -103,13 +103,13 @@ class PostGISWriter(object):
         self.session = Session()
         self.connect = self.engine.connect()
         self.srid = srid
-        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinMergedBGA2500"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500"):
             WormLayer.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinMergedBGA2500_points"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500_points"):
             WormPoint.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinMergedBGA2500_levels"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500_levels"):
             WormLevel.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "AppBasinMergedBGA2500_levels_points"):
+        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500_levels_points"):
             WormLevelPoints.__table__.create(self.engine)
         
         
@@ -225,8 +225,8 @@ class PostGISWriter(object):
                 
     def cleanUpDatabase(self):
         connect = self.session.connection()
-        connect.execute(text('UPDATE "AppBasinMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'))
-        connect.execute(text("SELECT UpdateGeometrySRID('AppBasinMergedBGA2500_levels_points','wgs84_line_segmt',4326);"))
+        connect.execute(text('UPDATE "ADKMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'))
+        connect.execute(text("SELECT UpdateGeometrySRID('ADKMergedBGA2500_levels_points','wgs84_line_segmt',4326);"))
         self.session.commit()
         self.session.close()
         
