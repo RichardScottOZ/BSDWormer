@@ -1,8 +1,8 @@
-'''
+"""
 Created on Jan 23, 2015
 
  @author: frank
-'''
+"""
 from sqlalchemy import create_engine, func, inspect
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import Column, Integer, Float, ForeignKey
@@ -46,7 +46,7 @@ def makeLine(pt1,pt2):
 Base = declarative_base()
 
 class WormLayer(Base):
-    __tablename__ = 'AppBasinMergedBGA2500'
+    __tablename__ = "AppBasinMergedBGA2500"
     id = Column(Integer, primary_key=True)
     height = Column(Float)
     geom = Column(Geometry('MULTILINESTRINGZM'))
@@ -89,15 +89,15 @@ class WormLevelPoints(Base):
 
 
 class PostGISWriter(object):
-    '''
+    """
     Encapsulates the method for writing worms to XYZM points in PostGIS.
     Also writes the x, y, z, and m values to a different table.
-    '''
+    """
 
-    def __init__(self, db='postgresql://frank@localhost/frank', srid=4326):
-        '''
+    def __init__(self, db='postgresql://frank:f00bar@localhost:5433/frank', srid=4326):
+        """
         Constructor
-        '''
+        """
         self.engine = create_engine('%s'%db, echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
