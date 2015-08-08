@@ -199,7 +199,7 @@ class Wormer(object):
                 
         
     
-    def buildLevelForVTK(self,dz,invert_z = True):
+    def buildLevelForVTK(self,dz,invert_z = True,delta_z_in_units = None):
         """Computes the VTK representation of worms for a single level."""
         # Organize the worm data so that the VTK writing stuff will swallow it...
         G_dz = dz
@@ -210,7 +210,12 @@ class Wormer(object):
         if invert_z:
             dz = -dz
             
-        all_points = [(e[0],e[1],dz*self.dx) for e in all_points] # Make sure we get East and North correct
+        # dz*self.dx is not always correct! 
+        if delta_z_in_units != None:
+            z_in_units = dz*delta_z_in_units
+        else:
+            z_in_units = dz*self.dx
+        all_points = [(e[0],e[1],z_in_units) for e in all_points] # Make sure we get East and North correct
         if self.all_points.get(G_dz) == None:
             base_point_num = 0
             self.all_points[G_dz] = all_points
