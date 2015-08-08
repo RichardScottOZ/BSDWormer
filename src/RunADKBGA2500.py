@@ -15,9 +15,9 @@ from WriteWormsToPostGIS import PostGISWriter as PGW
 #from geometry import GeoTransformToGCPs,MapToPixel
 import sys
 job = w.Wormer()
-filename = os.path.abspath('/home/frank/src/BSDWormer/test_data/AppBasinGPFA/ADK_BGA_UTM_2500.ers')
+filename = os.path.abspath('../test_data/AppBasinGPFA/ADK_BGA_UTM_2500.ers')
 job.importGdalRaster(filename)
-job.importExternallyPaddedRaster('/home/frank/src/BSDWormer/test_data/AppBasinGPFA/ADK_BGA_UTM_2500_padded.ers')
+job.importExternallyPaddedRaster('../test_data/AppBasinGPFA/ADK_BGA_UTM_2500_padded.ers')
 #raw_input()
 #job.padded_grid = job.base_grid
 #nodata = -65.
@@ -26,16 +26,17 @@ job.importExternallyPaddedRaster('/home/frank/src/BSDWormer/test_data/AppBasinGP
 #job._georeferencePaddedGrid()
 # HACK! We already have a padded PSG image from Oasis Montaj.
 #job.padded_geotransform = job.geomat
-pgw = PGW(srid=32618,db='postgresql://frank:f00bar@localhost:5433/frank')
+pgw = PGW(srid=32618,db='postgresql://frank@localhost:5432/frank')
 for dz in range(1,15):
     #if dz == 0:
     #    dz = 0.001
     delta_z = 500.
     #dzm = -dz*job.dy
-    dzm = -dz * delta_z
+    # Bloody images. job.dy is negative. Grrrr. So we need to have a positive dzm.
+    dzm = dz * delta_z
     job.wormLevelAsPoints(dz=dzm)
     job.buildWormSegs(dz=dz,clipped=True,nodata_in_worm_image=-100.,from_image=False)
-    job.buildLevelForVTK(dz=dz)
+    job.buildLevelForVTK(dz=dz,delta_z_in_units=dzm)
     #pgw.addWormLayer(job,dz)
     #pgw.addWormPoints(job,dz)
     pgw.addWormsAtHeightToDB(job,dz,srid=32618)
