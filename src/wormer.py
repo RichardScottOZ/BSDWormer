@@ -212,7 +212,7 @@ class Wormer(object):
             
         # dz*self.dx is not always correct! 
         if delta_z_in_units != None:
-            z_in_units = dz*delta_z_in_units
+            z_in_units = delta_z_in_units
         else:
             z_in_units = dz*self.dx
         all_points = [(e[0],e[1],z_in_units) for e in all_points] # Make sure we get East and North correct
