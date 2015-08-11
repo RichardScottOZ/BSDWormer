@@ -13,6 +13,15 @@ from sqlalchemy.sql import text
 from io import StringIO
 from math import atan2, pi
 
+# This is the base of all PostGIS table names for this project
+# With a little luck, all of this "by hand" construction of tablenames
+# will get fixed in the worming code shortly, but for now, let's keep on doing this.
+basename = 'ADK_CEUS_PSG_1250'
+layer_name = basename
+points_name = basename + '_points'
+levels_name = basename + '_levels'
+levels_points_name = basename + '_levels_points'
+
 
 def ToMLSZM_WKT(foo,height,SRID=4326):
     dummy = StringIO()
@@ -46,42 +55,70 @@ def makeLine(pt1,pt2):
 Base = declarative_base()
 
 class WormLayer(Base):
-    __tablename__ = "ADKMergedBGA2500"
+    __tablename__ = basename
     id = Column(Integer, primary_key=True)
     height = Column(Float)
     geom = Column(Geometry('MULTILINESTRINGZM'))
     
 class WormPoint(Base):
-    __tablename__ = 'ADKMergedBGA2500_points'
+    __tablename__ = points_name
+    # Primary Key. Boring.
     worm_point_id = Column(Integer, primary_key=True, index=True)
+    # An id from the worming code. I don't remember if it was unique, so I didn't use it as a PK.
     vtk_id = Column(Integer,index=True)
+    # Coordinates of the point in some 'native' CRS
     x = Column(Float)
     y = Column(Float)
     z = Column(Float)
+    # The scalar value of the magnitude of the horizontal gradient
     grad = Column(Float)
+    # The height of upward continuation from which the grad and coordinates were drawn.
     height = Column(Float)
+    # A PostGIS point geometry, in the native CRS
     pt = Column(Geometry('POINTZM'),index=True)
+    # A duplicate of pt in WGS84 coordinates; converted by PostGIS at write-time
     wgs84_pt = Column(Geometry('POINTZM'),index=True)
-    level = relationship('WormLevel', secondary='ADKMergedBGA2500_levels_points')
+    # Database magic that links entries in this table with entries in another table
+    level = relationship('WormLevel', secondary=levels_points_name)
     
 class WormLevel(Base):
-    __tablename__ = 'ADKMergedBGA2500_levels'
+    __tablename__ = levels_name
+    # A PK, there are only ~10 entries in this table, so it's tiny, so no index.
     worm_level_id = Column(Integer, primary_key=True)
+    # The actual level (prob in meters, but potentially varies...)
     level = Column(Float)
-    point = relationship('WormPoint', secondary='ADKMergedBGA2500_levels_points')
+    # Database magic that links entries in this table with entries in another table
+    point = relationship('WormPoint', secondary=levels_points_name)
     
 class WormLevelPoints(Base):
-    __tablename__ = 'ADKMergedBGA2500_levels_points'
-    worm_level_id = Column(Integer, ForeignKey('ADKMergedBGA2500_levels.worm_level_id'), primary_key=True)
-    point_id = Column(Integer, ForeignKey('ADKMergedBGA2500_points.worm_point_id'), primary_key=True)
+    __tablename__ = levels_points_name
+    # This table has a "composite primary key" composed of the first 2 ForeignKey entries and the internal primary key
+    # This is the level_id in the external table
+    worm_level_id = Column(Integer, ForeignKey(levels_name + '.worm_level_id'), primary_key=True)
+    # This is the point id of the END point of a line segment.
+    point_id = Column(Integer, ForeignKey(points_name + '.worm_point_id'), primary_key=True)
+    # In addition to participating in a composite primary key, this field is 
+    # a unique-within-a-level index for worm segments. 
     worm_seg_id = Column(Integer,primary_key=True,index=True)
+    # Database magic that links entries in this table with entries in another table
     worm_level = relationship(WormLevel, backref=backref("worm_point_assoc"))
+    # Database magic that links entries in this table with entries in another table
     worm_point = relationship(WormPoint, backref=backref("worm_level_assoc"))
+    # This is an index number internal to each worm segment, numbering the edges
+    # FIXME (maybe) This terminology needs to be cleaned up.
     seg_sequence_num = Column(Integer)
+    # This holds the PostGIS geometry structure for a single edge, in some native CRS.
     line_segmt = Column(Geometry('LINESTRINGZM'),index=True)
+    # This scalar gradient value is derived from the average of the point grads on either end of the edge
+    # Currently, the upstream code is doing that for the LOG(value), so this is in fact now
+    # sqrt(grad(pt1) * grad(pt2))
     line_grad = Column(Float)
+    # The azimuth of the edge in degrees East of North.
     azimuth = Column(Float)
+    # This is the point ID in the points table of the starting point of an edge
+    # FIXME (maybe) this could and probably should be an actual relation into the points table, for ease of retrieval.
     start_point_id = Column(Integer)
+    # This is a duplicate of line_segmt but explicitly stored in wgs84.
     wgs84_line_segmt = Column(Geometry('LINESTRINGZM'),index=True)
 
     
@@ -103,13 +140,13 @@ class PostGISWriter(object):
         self.session = Session()
         self.connect = self.engine.connect()
         self.srid = srid
-        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500"):
+        if not self.engine.dialect.has_table(self.engine.connect(), layer_name):
             WormLayer.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500_points"):
+        if not self.engine.dialect.has_table(self.engine.connect(), points_name):
             WormPoint.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500_levels"):
+        if not self.engine.dialect.has_table(self.engine.connect(), levels_name):
             WormLevel.__table__.create(self.engine)
-        if not self.engine.dialect.has_table(self.engine.connect(), "ADKMergedBGA2500_levels_points"):
+        if not self.engine.dialect.has_table(self.engine.connect(), levels_points_name):
             WormLevelPoints.__table__.create(self.engine)
         
         
@@ -225,8 +262,8 @@ class PostGISWriter(object):
                 
     def cleanUpDatabase(self):
         connect = self.session.connection()
-        connect.execute(text('UPDATE "ADKMergedBGA2500_levels_points" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'))
-        connect.execute(text("SELECT UpdateGeometrySRID('ADKMergedBGA2500_levels_points','wgs84_line_segmt',4326);"))
+        connect.execute(text('UPDATE "'+levels_points_name+'" SET wgs84_line_segmt = ST_Transform(line_segmt,4326);'))
+        connect.execute(text("SELECT UpdateGeometrySRID('"+levels_points_name+"','wgs84_line_segmt',4326);"))
         self.session.commit()
         self.session.close()
         
