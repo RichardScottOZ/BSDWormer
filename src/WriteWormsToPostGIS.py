@@ -167,7 +167,7 @@ class PostGISWriter(object):
                 sgmt_ewkt = WKTElement(sgmt_wkt,srid=srid)
                 #wgs84_sgmt = func.ST_Transform(sgmt_ewkt,4326)
                 connect.execute(wlp_table.insert(),
-                                worm_level_id = self.tablenames['worm_level']+'.worm_level_id',
+                                worm_level_id = self.tablenames['levels_name']+'.worm_level_id',
                                 point_id = end_pt.worm_point_id,
                                 seg_sequence_num = seq_num,
                                 worm_seg_id = seg_id,
