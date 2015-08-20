@@ -1,3 +1,6 @@
 [submodule "wiki"]
 	path = wiki
 	url = https://fghorow@bitbucket.org/fghorow/bsdwormer.git/wiki
+[submodule "src/WormDBStuff"]
+	path = src/WormDBStuff
+	url = git@github.com:fghorow/WormDBStuff.git
