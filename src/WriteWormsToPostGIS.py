@@ -4,9 +4,6 @@ Created on Jan 23, 2015
  @author: frank
 """
 from sqlalchemy import create_engine, func, inspect
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import Column, Integer, Float, ForeignKey
-from geoalchemy2 import Geometry
 from geoalchemy2.elements import WKTElement, WKBElement
 from sqlalchemy.orm import sessionmaker, relationship, backref
 from sqlalchemy.sql import text
@@ -58,16 +55,15 @@ class PostGISWriter(object):
         """
         Constructor
         """
-        
         if basename == '':
-        	raise ValueError("No basename specified!")
-        	
+            raise ValueError("No basename specified!")
+
         
-		(self.WormPoint, 
+        (self.WormPoint, 
 		self.WormLevelPoints, 
 		self.WormLevel, 
 		self.tablenames) = WormDBStuffFactory(basename)
-		
+
         self.engine = create_engine('%s'%db, echo=False)
         Session = sessionmaker(bind=self.engine)
         self.session = Session()
