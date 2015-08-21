@@ -379,6 +379,8 @@ class FourierDomainOps(object):
         fct_px = np.roll(fct,-1,axis=1)
         fct_py = np.roll(fct,-1,axis=0)
         idxs = np.indices(fct.shape)
+        x_max = fct.shape[1]
+        y_max = fct.shape[0]
         
         np.seterr(divide='ignore') # temporarily turn off zerodivide warnings
         # This computes the 's' parameter along the x edge of a pixel
@@ -388,8 +390,14 @@ class FourierDomainOps(object):
         # This adds the pixel index to the fractional x coordinate,
         # and restricts to the valid locations
         x_fractional_x = (s_px + idxs[1])[zc_px]
+        # Restricting to valid x indices
+        good_idxs = (x_fractional_x < x_max)
+        # Pulling only valid x indices
+        x_fractional_x = x_fractional_x[good_idxs]
         # This simply pulls the y index from the valid locations.
         y_fractional_x = (idxs[0])[zc_px]
+        # Pulling only valid x indices
+        y_fractional_x = y_fractional_x[good_idxs]
         if val_img != None:
             # And grab the associated 'value' from val_img.
             # N.B. we are grabbing the pixel value only, not anything
@@ -399,8 +407,15 @@ class FourierDomainOps(object):
         # Now we repeat that whole process for the y edges
         s_py = fct / (fct - fct_py)
         zc_py = (0. <= s_py) & (s_py <= 1.0)
+        # Need to restrict this to valid y indices...
         y_fractional_y = (s_py + idxs[0])[zc_py]
+        # Restricting to valid y indices
+        good_idxs = (y_fractional_y < y_max)
+        # Pulling only valid y indices
+        y_fractional_y = y_fractional_y[good_idxs]
         x_fractional_y = (idxs[1])[zc_py]
+        # Pulling only valid y indices
+        x_fractional_y = x_fractional_y[good_idxs]
         if val_img != None:
             val_fractional_y = val_img[zc_py]
         np.seterr(divide='warn') # turn back on zerodivide warnings
