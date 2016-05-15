@@ -3,12 +3,58 @@
 
 $provision_script = <<'EOF'
 echo "shell provisioning"
+PG_VERSION=9.3
+PROVISIONED_ON=/etc/vm_provision_on_timestamp
 sudo apt-get update
 sudo apt-get -y dist-upgrade
 sudo apt-get install -y virtualbox-guest-dkms python3-scipy ipython3-notebook python3-matplotlib git python3-pip python3-gdal gdal-bin python3-networkx atop python-sqlalchemy postgresql-9.3-postgis-2.1
 sudo -u postgres createuser vagrant
 pip3 install future
 pip3 install git+https://fghorow@bitbucket.org/fghorow/pyvtk-py3-port.git
+
+PG_CONF="/etc/postgresql/$PG_VERSION/main/postgresql.conf"
+PG_HBA="/etc/postgresql/$PG_VERSION/main/pg_hba.conf"
+PG_DIR="/var/lib/postgresql/$PG_VERSION/main"
+
+# Edit postgresql.conf to change listen address to '*':
+sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/" "$PG_CONF"
+
+# Append to pg_hba.conf to add password auth:
+echo "host    all             all             all                     md5" >> "$PG_HBA"
+
+# Explicitly set default client_encoding
+echo "client_encoding = utf8" >> "$PG_CONF"
+
+# Restart so that all new config is loaded:
+service postgresql restart
+
+# Edit the following to change the name of the database user that will be created:
+APP_DB_USER=wormuser
+APP_DB_PASS=wormuserpass
+
+# Edit the following to change the name of the database that is created (defaults to the user name)
+APP_DB_NAME=$APP_DB_USER
+
+cat << EOF1 | su - postgres -c psql
+-- Create the database user:
+CREATE USER $APP_DB_USER WITH PASSWORD '$APP_DB_PASS';
+
+-- Create the database:
+CREATE DATABASE $APP_DB_NAME WITH OWNER=$APP_DB_USER
+                                  LC_COLLATE='en_US.utf8'
+                                  LC_CTYPE='en_US.utf8'
+                                  ENCODING='UTF8'
+                                  TEMPLATE=template0;
+EOF1
+
+# Tag the provision time:
+date > "$PROVISIONED_ON"
+
+
+
+echo "Successfully created PostgreSQL dev virtual machine."
+echo ""
+
 EOF
 
 # All Vagrant configuration is done below. The "2" in Vagrant.configure
@@ -32,7 +78,7 @@ Vagrant.configure(2) do |config|
   # Create a forwarded port mapping which allows access to a specific port
   # within the machine from a port on the host machine. In the example below,
   # accessing "localhost:8080" will access port 80 on the guest machine.
-  # config.vm.network "forwarded_port", guest: 80, host: 8080
+  config.vm.network "forwarded_port", guest: 8888, host: 8888, auto_correct: true
 
   # Create a private network, which allows host-only access to the machine
   # using a specific IP.
@@ -47,7 +93,7 @@ Vagrant.configure(2) do |config|
   # the path on the host to the actual folder. The second argument is
   # the path on the guest to mount the folder. And the optional third
   # argument is a set of non-required options.
-  config.vm.synced_folder "../data", "/vagrant_data"
+  config.vm.synced_folder "./", "/vagrant"
 
   # Provider-specific configuration so you can fine-tune various
   # backing providers for Vagrant. These expose provider-specific options.
@@ -89,4 +135,10 @@ Vagrant.configure(2) do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision :shell, :inline => $provision_script
+  
+  # Fire off the Ipython/Jupyter(?) notebook server
+  config.vm.provision "shell", run: "always", inline: <<-SHELL
+    ipython3 notebook --notebook-dir=/vagrant/src --no-browser --ip=0.0.0.0 &
+  SHELL
+
 end
