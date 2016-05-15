@@ -6,7 +6,7 @@ import FourierDomainGrid as GRID
 import FourierDomainOps as FDO
 from scipy import spatial
 import networkx as nx
-from Utility import writeVtkWorms, writeGDALRasterFromNumpyArray
+from Utility import writeVtkWormLevels, writeGDALRasterFromNumpyArray
 from FftUtils import mk_apod_mask, embed_data
 from osgeo.gdal import GCP, GCPsToGeoTransform
 from geometry import MapToPixel, PixelToMap, CellSize, ExtentToGCPs, GeoTransformToGCPs

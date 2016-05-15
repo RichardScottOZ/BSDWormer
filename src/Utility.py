@@ -39,10 +39,19 @@ def writeVtkImage(filename,image,origin,spacing):
                     )
     vtk.tofile(filename+"_image.vtk")
 
-def writeVtkWorms(filename,points,lines,vals):
-    points_list = [p for v in points.values() for p in v]
-    lines_list = [p for v in lines.values() for p in v]
-    vals_list = [p for v in vals.values() for p in v]
+def writeVtkWorms(filename,points,lines,vals,single_level=True):
+    if not single_level:
+        # Warning. This code is buggy and produces a messed up vtk file
+        # It displays, but there are all kinds of problems in it
+        # FIXME: cure this stanza or junk it...
+        points_list = [p for v in points.values() for p in v]
+        lines_list = [p for v in lines.values() for p in v]
+        vals_list = [p for v in vals.values() for p in v]
+    else:
+        points_list = points
+        lines_list = lines
+        vals_list = vals
+    
     vtk = PV.VtkData(PV.PolyData(points=points_list,
                                  lines=lines_list),
                      'Worm Segments',
@@ -50,6 +59,16 @@ def writeVtkWorms(filename,points,lines,vals):
                      'Edge Magnitudes'
                     )
     vtk.tofile(filename+"_worms.vtk")
+    
+def writeVtkWormLevels(filename,points,lines,vals):
+    assert len(points) == len(lines)
+    assert len(lines) == len(vals)
+    for level in range(1,len(points)+1):
+        pts = points[level]
+        lns = lines[level]
+        vs = vals[level]
+        name = filename + '_level_{0}'.format(level)
+        writeVtkWorms(name,pts,lns,vs)
 
 def isclose(a, b, rtol=1.e-5, atol=1.e-8, check_invalid=True):
     """Similar to numpy.allclose, but returns a boolean array.
