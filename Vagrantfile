@@ -7,9 +7,10 @@ PG_VERSION=9.3
 PROVISIONED_ON=/etc/vm_provision_on_timestamp
 sudo apt-get update
 sudo apt-get -y dist-upgrade
-sudo apt-get install -y virtualbox-guest-dkms python3-scipy ipython3-notebook python3-matplotlib git python3-pip python3-gdal gdal-bin python3-networkx atop python-sqlalchemy postgresql-9.3-postgis-2.1
+sudo apt-get install -y virtualbox-guest-dkms python3-scipy ipython3-notebook python3-matplotlib git python3-pip python3-gdal gdal-bin python3-networkx atop python3-sqlalchemy postgresql-9.3-postgis-2.1 python3-psycopg2
 sudo -u postgres createuser vagrant
 pip3 install future
+pip3 install geoalchemy2
 pip3 install git+https://fghorow@bitbucket.org/fghorow/pyvtk-py3-port.git
 
 PG_CONF="/etc/postgresql/$PG_VERSION/main/postgresql.conf"
@@ -46,6 +47,9 @@ CREATE DATABASE $APP_DB_NAME WITH OWNER=$APP_DB_USER
                                   ENCODING='UTF8'
                                   TEMPLATE=template0;
 EOF1
+
+# This enables the PostGIS stuff inside the right database
+sudo -u postgres psql -c "CREATE EXTENSION postgis; CREATE EXTENSION postgis_topology;" $APP_DB_NAME
 
 # Tag the provision time:
 date > "$PROVISIONED_ON"
@@ -136,7 +140,7 @@ Vagrant.configure(2) do |config|
   # documentation for more information about their specific syntax and use.
   config.vm.provision :shell, :inline => $provision_script
   
-  # Fire off the Ipython/Jupyter(?) notebook server
+  # Fire off the Ipython notebook server
   config.vm.provision "shell", run: "always", inline: <<-SHELL
     ipython3 notebook --notebook-dir=/vagrant/src --no-browser --ip=0.0.0.0 &
   SHELL
