@@ -189,6 +189,10 @@ class PostGISWriter(object):
         self.session.commit()
         self.session.close()
         
+    def dropCurrentWormTables(self):
+    	self.WormLevelPoints.__table__.drop(self.engine)
+    	self.WormPoint.__table__.drop(self.engine)
+    	self.WormLevel.__table__.drop(self.engine)
 
     def _rollbackBadDatabaseTransaction(self):
         self.session.rollback()
