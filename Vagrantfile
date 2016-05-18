@@ -111,6 +111,9 @@ Vagrant.configure(2) do |config|
     
     # Customize the amount of memory on the VM:
     vb.memory = "6144"
+
+    # Give the virtual machine 2 cores to play with:
+    vb.cpus = 2
   end
   #
   # View the documentation for the provider you are using for more
