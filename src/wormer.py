@@ -172,7 +172,7 @@ class Wormer(object):
                     if visited[source] and visited[dest]:
                         # We've already traversed this edge for some reason; bail out of further processing
                         continue
-                    if d['dir'] != 'forward':
+                    if d != 'forward':
                         # Backtracking or out-of-spanning-tree edge; not interested
                         continue
                     if source == dest:
@@ -386,8 +386,8 @@ class Wormer(object):
             internal_linemin = min(internal_linemin,py)
             internal_linemax = max(internal_linemax,py)
         #print(internal_pixmin,internal_pixmax,internal_linemin,internal_linemax)
-        self.padded_slice_x = slice(internal_pixmin,internal_pixmax,1)
-        self.padded_slice_y = slice(internal_linemin,internal_linemax,1)
+        self.padded_slice_x = slice(int(internal_pixmin),int(internal_pixmax),1)
+        self.padded_slice_y = slice(int(internal_linemin),int(internal_linemax),1)
         #print(self.padded_slice_x,self.padded_slice_y)
         self.padded_geotransform = ep_geomat
         if self.no_data_value != None:

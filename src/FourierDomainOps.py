@@ -269,9 +269,9 @@ class FourierDomainOps(object):
         except:
             fdg.buildWavenumbers(fdg.hat_grid)   
 
-        if self.F_dxOp == None:
+        if self.F_dxOp is None:
             self.buildDxOp()
-        if self.F_dyOp == None:
+        if self.F_dyOp is None:
             self.buildDyOp()
         
         dx_vect = GRID.FourierDomainGrid(dx=fdg.dx,dy=fdg.dy)
@@ -398,7 +398,9 @@ class FourierDomainOps(object):
         y_fractional_x = (idxs[0])[zc_px]
         # Pulling only valid x indices
         y_fractional_x = y_fractional_x[good_idxs]
-        if val_img != None:
+        if val_img is None:
+        	pass
+        else:
             # And grab the associated 'value' from val_img.
             # N.B. we are grabbing the pixel value only, not anything
             # fancy like the average value of the two pixels sharing the edge. 
@@ -416,13 +418,15 @@ class FourierDomainOps(object):
         x_fractional_y = (idxs[1])[zc_py]
         # Pulling only valid y indices
         x_fractional_y = x_fractional_y[good_idxs]
-        if val_img != None:
+        if val_img is None:
+        	pass
+        else:
             val_fractional_y = val_img[zc_py]
         np.seterr(divide='warn') # turn back on zerodivide warnings
         y_coords = np.append(y_fractional_x,y_fractional_y)
         x_coords = np.append(x_fractional_x,x_fractional_y)
 
-        if val_img == None:
+        if val_img is None:
             return y_coords, x_coords
         else:
             vals = np.append(val_fractional_x,val_fractional_y)
