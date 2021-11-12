@@ -205,7 +205,7 @@ class Wormer(object):
         G_dz = dz
         max_valid_node = self.G[G_dz].number_of_nodes()-1
         #max_valid_node = self.G[G_dz].number_of_nodes()
-        all_points = [self.G[G_dz].node[p]['geog_pos'] for p in range(max_valid_node)] # The last one is empty; in Geographic coords
+        all_points = [self.G[G_dz].nodes[p]['geog_pos'] for p in range(max_valid_node)] # The last one is empty; in Geographic coords
 
         if invert_z:
             dz = -dz
@@ -222,7 +222,7 @@ class Wormer(object):
         else:
             base_point_num = len(self.all_points[G_dz]) 
             self.all_points[G_dz] += all_points
-        all_vals = [self.G[G_dz].node[p]['val'] for p in range(max_valid_node)] # The last one is empty
+        all_vals = [self.G[G_dz].nodes[p]['val'] for p in range(max_valid_node)] # The last one is empty
         all_lines = []
         for s in self.segs:
             if s == []:
