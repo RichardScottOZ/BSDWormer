@@ -1,0 +1,64 @@
+# BSDWormer Configuration Example
+
+# Padding configuration for FFT operations
+padding:
+  # Size of the rolloff/apodization region in pixels
+  rolloff_size: 100
+  
+  # Type of apodization window function
+  # Options: 'hann', 'hamming', 'cosine', 'lanczos'
+  pad_type: 'hann'
+
+# Processing parameters
+processing:
+  # Value to use for no-data pixels
+  nodata_value: -100
+  
+  # Whether to take log10 of worm magnitudes
+  log_vals: true
+  
+  # Whether to clip results to valid data region
+  clipped: true
+  
+  # Worm detection parameters
+  worm_detection:
+    # Threshold for edge detection (if applicable)
+    # threshold: 0.1
+    
+    # Number of nearest neighbors for graph construction
+    k_neighbors: 3
+    
+    # Maximum distance for neighbor search
+    distance_upper_bound: 1.42
+
+# Output configuration
+output:
+  # GDAL output format
+  # Options: 'GTiff', 'ERS', 'ENVI', etc.
+  format: 'GTiff'
+  
+  # Compression for output files (GTiff only)
+  # Options: 'LZW', 'DEFLATE', 'PACKBITS', 'NONE'
+  compression: 'LZW'
+  
+  # Create overviews/pyramids
+  create_overviews: false
+  
+  # VTK output options
+  vtk:
+    # Invert Z axis for depth vs elevation
+    invert_z: true
+    
+    # Use absolute values for colors
+    abs_values: true
+
+# Logging configuration
+logging:
+  # Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: 'INFO'
+  
+  # Log file path (optional, logs to console if not specified)
+  # file: 'bsdwormer.log'
+  
+  # Log format
+  format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
